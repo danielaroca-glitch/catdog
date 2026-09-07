@@ -20,12 +20,12 @@
 
 ## Exclusões de cobertura (decididas no fechamento de pbi-001)
 
-- **Backend**: `main.ts` e `*.module.ts` excluídos (`coveragePathIgnorePatterns` em `package.json`) — arquivos de wiring/composição do NestJS, sem lógica de negócio; a integridade da montagem já é validada pelos testes e2e, que bootam o `AppModule` completo. `configure-app.ts` também excluído — tem lógica real (CORS, ValidationPipe), mas só é exercitado por `test/cors.e2e-spec.ts` (e2e), não por um teste unitário; a métrica de cobertura unitária e a de e2e não são somadas por esta config.
+- **Backend**: `main.ts` e `*.module.ts` excluídos (`coveragePathIgnorePatterns` em `package.json`) — arquivos de wiring/composição do NestJS, sem lógica de negócio; a integridade da montagem já é validada pelos testes e2e, que bootam o `AppModule` completo. `configure-app.ts` também excluído — tem lógica real (CORS, ValidationPipe, e a decisão documentada de não configurar `trust proxy`), mas só é exercitado por testes e2e (`test/cors.e2e-spec.ts` e `test/trust-proxy.e2e-spec.ts`, ambos chamam `configureApp()` explicitamente), não por um teste unitário; a métrica de cobertura unitária e a de e2e não são somadas por esta config. A mesma exclusão precisa ser espelhada em `sonar.coverage.exclusions` (`sonar-project.properties`), senão o Sonar reporta 0% de cobertura para este arquivo mesmo estando coberto via e2e (ver `.makuco/STATE.md`, Lessons Learned).
 - **Frontend**: `src/components/ui/**` excluído (`coveragePathIgnorePatterns` em `jest.config.ts`) — primitivas geradas pelo `shadcn` CLI (`npx shadcn add ...`), não código de negócio próprio do projeto.
 
 ## Gate Check Commands
 
-> **[ASSUMPTION]** Scripts assumidos como padrão NestJS/Next.js; confirmar/ajustar quando `package.json` de cada serviço for criado (primeira task de cada PBI que ainda não tiver o serviço inicializado).
+> Confirmado em `pbi-001` (T1/T2): os scripts abaixo batem exatamente com o `package.json` real de `services/backend` (NestJS via `@nestjs/cli@11`) e `services/frontend` (Next.js 16) — deixou de ser suposição para esses dois serviços. Mantém-se `[ASSUMPTION]` apenas para um serviço novo ainda não inicializado.
 
 | Gate | Comando (backend) | Comando (frontend) |
 | --- | --- | --- |

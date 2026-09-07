@@ -21,13 +21,13 @@ stages:
 # PBI-level stages (run once per PBI; different PBIs may progress in parallel).
 pbis:
   registro-e-confirmacao-de-conta:
-    current_stage: "7. Review"
+    current_stage: "9. Deploy & Documentação"
     business: pending
     technical: pending
     spec: pending
     plan: pending
     review: approved
-    documentation: pending
+    documentation: done
     tasks:
       task-14: done
   login-e-sessao-com-refresh-token:
