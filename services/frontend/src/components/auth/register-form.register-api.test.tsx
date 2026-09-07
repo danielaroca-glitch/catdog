@@ -72,7 +72,11 @@ describe("RegisterForm - integração com a API de registro (T9)", () => {
       })
     })
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith("/registro/confirmacao-pendente")
+      // T10: o e-mail viaja como query string para a tela de confirmação
+      // pendente exibir "Enviamos um e-mail de confirmação para {email}."
+      expect(pushMock).toHaveBeenCalledWith(
+        "/registro/confirmacao-pendente?email=marina%40example.com"
+      )
     })
   })
 
@@ -135,7 +139,9 @@ describe("RegisterForm - integração com a API de registro (T9)", () => {
     resolveRegister({ id: "user-1", email: "marina@example.com", role: "adotante" })
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith("/registro/confirmacao-pendente")
+      expect(pushMock).toHaveBeenCalledWith(
+        "/registro/confirmacao-pendente?email=marina%40example.com"
+      )
     })
   })
 

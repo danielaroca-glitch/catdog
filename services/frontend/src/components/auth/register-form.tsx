@@ -89,7 +89,14 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
 
     try {
       await registerUser(values)
-      router.push(REGISTER_CONFIRMATION_PENDING_ROUTE)
+      // T10: o e-mail viaja como query string para a tela de confirmação
+      // pendente exibir "Enviamos um e-mail de confirmação para {email}."
+      // App Router não tem um mecanismo simples de state entre páginas sem
+      // sessionStorage/contexto — query string é a opção mais simples e não
+      // quebra a navegação existente (REG-03).
+      router.push(
+        `${REGISTER_CONFIRMATION_PENDING_ROUTE}?email=${encodeURIComponent(values.email)}`
+      )
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
         setSubmitError(DUPLICATE_EMAIL_MESSAGE)
