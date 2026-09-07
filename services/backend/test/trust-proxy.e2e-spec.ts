@@ -1,9 +1,10 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { SupabaseClient } from '@supabase/supabase-js';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/configure-app';
 import { SUPABASE_CLIENT } from '../src/supabase/supabase.provider';
 
 interface RegisteredUserResponse {
@@ -30,6 +31,12 @@ interface RegisteredUserResponse {
  * ou seja, o header forjado não é usado para identificar o cliente, e o
  * rate limit de `auth-register-rate-limit.e2e-spec.ts` não é contornável
  * dessa forma.
+ *
+ * Achado #1 (major) de `review.md` Rodada de revisão 3: a app de teste
+ * precisa ser montada via `configureApp()` (não uma reimplementação manual
+ * de `useGlobalPipes`), igual a `cors.e2e-spec.ts` — senão este teste prova
+ * só o comportamento DEFAULT do Express/Nest, não a configuração real de
+ * produção, e não travaria uma futura regressão dentro de `configureApp()`.
  */
 function validPayload(email: string) {
   return {
@@ -52,7 +59,7 @@ describe('Trust proxy - X-Forwarded-For não é confiável (e2e)', () => {
     }).compile();
 
     app = moduleRef.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
+    configureApp(app);
     await app.init();
 
     supabase = moduleRef.get<SupabaseClient>(SUPABASE_CLIENT);
