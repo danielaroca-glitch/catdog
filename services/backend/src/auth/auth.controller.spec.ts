@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { RegisterDto } from './dto/register.dto';
 import { EmailAlreadyExistsException } from './exceptions/email-already-exists.exception';
 import { RegisteredUser, RegisterUseCase } from './use-cases/register.use-case';
@@ -8,7 +9,16 @@ async function buildController(registerUseCase: Partial<RegisterUseCase>) {
   const module = await Test.createTestingModule({
     controllers: [AuthController],
     providers: [{ provide: RegisterUseCase, useValue: registerUseCase }],
-  }).compile();
+  })
+    // T12: `register` está protegido por @UseGuards(ThrottlerGuard). Nos
+    // testes de unidade do controller (que chamam o método diretamente,
+    // sem passar pelo pipeline HTTP), o guard não é exercitado — apenas
+    // precisa ser resolvível para o módulo compilar. O comportamento de
+    // rate limit em si é coberto pelo teste de integração
+    // `test/auth-register-rate-limit.e2e-spec.ts`.
+    .overrideGuard(ThrottlerGuard)
+    .useValue({ canActivate: () => true })
+    .compile();
 
   return module.get(AuthController);
 }

@@ -1,4 +1,5 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { RegisterDto } from './dto/register.dto';
 import { RegisteredUser, RegisterUseCase } from './use-cases/register.use-case';
 
@@ -26,6 +27,15 @@ import { RegisteredUser, RegisterUseCase } from './use-cases/register.use-case';
 export class AuthController {
   constructor(private readonly registerUseCase: RegisterUseCase) {}
 
+  /**
+   * Rate limit dedicado a este endpoint (achado #2, major, de review.md
+   * rodada 1): 5 requisições/minuto por IP, para impedir criação em massa
+   * de contas e sondagem de e-mails via respostas 409 repetidas. O guard
+   * é aplicado apenas aqui — não globalmente via APP_GUARD — para não
+   * impactar outros endpoints com necessidades de limite diferentes.
+   */
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('register')
   async register(@Body() dto: RegisterDto): Promise<RegisteredUser> {
     return this.registerUseCase.execute(dto);
