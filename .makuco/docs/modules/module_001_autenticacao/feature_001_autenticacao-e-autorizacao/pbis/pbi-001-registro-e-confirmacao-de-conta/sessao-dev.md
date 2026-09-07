@@ -1,6 +1,6 @@
 ---
-status: 'developing'
-stepsCompleted: [1, 2, 3, 4]
+status: 'done'
+stepsCompleted: [1, 2, 3, 4, 5]
 item_id: 'pbi-001'
 ado_id: ''
 titulo: 'Registro e confirmação de conta'
@@ -14,7 +14,7 @@ ca_imutaveis: true
 spec_construido: true
 total_tasks: 10
 skills_necessarias: ['makuco-backend', 'makuco-frontend']
-proxima_fase: 'fechamento'
+proxima_fase: 'concluida'
 riscos: []
 ---
 
