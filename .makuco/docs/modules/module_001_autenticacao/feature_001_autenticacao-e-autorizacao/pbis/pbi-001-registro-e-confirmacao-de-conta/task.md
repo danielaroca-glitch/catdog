@@ -377,6 +377,35 @@ Tasks adicionadas após `review.md` rodada 1 (veredito NECESSITA CORREÇÕES). N
 
 ---
 
+## Correções da Review — Rodada 2 (achado bloqueante)
+
+Task adicionada após `review.md` Rodada de revisão 2 (veredito NECESSITA CORREÇÕES). Não é um novo requisito REG-NN — é a correção do achado #1 (major) da rodada 2, exposto pela própria correção de T12 (rate limiting).
+
+### T13: Documentar decisão de trust proxy no rate limiting
+
+**What**: `ThrottlerGuard` identifica o cliente por `req.ip`, que sem `app.set('trust proxy', ...)` reflete o IP do proxy (não do cliente real) atrás de qualquer reverse proxy/load balancer, colapsando todos os usuários no mesmo balde de rate limit. Decisão do usuário: **não configurar trust proxy agora** — este projeto ainda não tem nenhuma topologia de deploy definida. Documentar essa decisão explicitamente (não deixar a ausência de config parecer um descuido) em `configure-app.ts`, provar por teste que `req.ip` resolve corretamente o IP do socket direto (cenário sem proxy, que é o único cenário real hoje — dev local), e registrar a decisão em `STATE.md` para ser revisitada quando a infra real for definida.
+**Where**: `services/backend/src/configure-app.ts` (comentário de decisão, sem chamada a `app.set('trust proxy', ...)`), `.makuco/STATE.md` (registro da decisão)
+**Depends on**: None
+**Reuses**: N/A
+**Requirement**: Achado #1 (major) de `review.md` Rodada de revisão 2
+
+**Tools**:
+- Skill: `makuco-backend`
+
+**Done when**:
+- [x] Comentário em `configure-app.ts` explica a decisão: sem proxy confiável conhecido hoje, `trust proxy` não é configurado; a decisão deve ser revisitada quando uma topologia de deploy real for definida (referenciando o achado #1 da rodada 2 e este registro em STATE.md)
+- [x] Teste de integração comprova que, numa conexão direta (sem proxy), o `ThrottlerGuard`/`req.ip` identifica corretamente o IP do socket do cliente (cenário atual do projeto) — `test/trust-proxy.e2e-spec.ts`, comprovando adicionalmente que um `X-Forwarded-For` forjado não é confiável (não contorna o rate limit)
+- [x] `.makuco/STATE.md` registra a decisão (sem proxy confiável hoje; revisitar na PBI de infra/deploy)
+
+**Tests**: integration (Supertest — requisições diretas sem header `X-Forwarded-For`, comprovando que o tracker do throttler resolve o IP do socket)
+**Gate**: full
+
+**Status**: ✅ Concluída — commit `c359e61`. Quality gate per-task (escopo `per-task`): Gate 0 PASS, Gate 1 PASS (reaproveitado do build+lint), Gate 3 SKIP (Docker indisponível) com checagem manual PASS, Gate 4 PASS. Nenhum achado bloqueante.
+
+**Commit**: `docs(backend): documenta decisão de não configurar trust proxy (achado #1 rodada 2)`
+
+---
+
 ## Task Granularity Check
 
 | Task | Scope | Status |
@@ -391,6 +420,7 @@ Tasks adicionadas após `review.md` rodada 1 (veredito NECESSITA CORREÇÕES). N
 | T8: RegisterForm | 1 componente | ✅ Granular |
 | T9: Conectar RegisterForm à API | 1 função (submit handler + client de API) | ✅ Granular |
 | T10: Tela de confirmação pendente | 1 página | ✅ Granular |
+| T13: Documentar decisão de trust proxy | 1 decisão documentada + 1 teste | ✅ Granular |
 
 ## Diagram-Definition Cross-Check
 
@@ -406,8 +436,9 @@ Tasks adicionadas após `review.md` rodada 1 (veredito NECESSITA CORREÇÕES). N
 | T8 | T2 | T2 → T8 | ✅ Match |
 | T9 | T8, T7 | T8 → T9, T7 → T9 | ✅ Match |
 | T10 | T9 | T9 → T10 | ✅ Match |
+| T13 | None | Task isolada, sem diagrama próprio (correção pontual de review) | ✅ Match |
 
-Nenhuma task `[P]` depende de outra `[P]` na mesma fase (T1/T2 independentes; T5/T8 cada um depende só de uma raiz de fase diferente).
+Nenhuma task `[P]` depende de outra `[P]` na mesma fase (T1/T2 independentes; T5/T8 cada um depende só de uma raiz de fase diferente). T13 é independente e não roda em paralelo com nada (task única desta rodada).
 
 ## Test Co-location Validation
 
@@ -423,5 +454,6 @@ Nenhuma task `[P]` depende de outra `[P]` na mesma fase (T1/T2 independentes; T5
 | T8 | Frontend — componente | unit | unit | ✅ OK |
 | T9 | Frontend — integração com API | unit | unit | ✅ OK |
 | T10 | Frontend — página | unit | unit | ✅ OK |
+| T13 | Backend — configuração de bootstrap | integration | integration | ✅ OK |
 
 Nenhuma violação — `Tests: none` usado apenas em T1/T2, onde a matriz também diz `none` (scaffolding puro).
