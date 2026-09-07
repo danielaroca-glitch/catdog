@@ -323,6 +323,60 @@ Phase 4 (frontend, após backend — AD-004):
 
 ---
 
+## Correções da Review — Rodada 1 (achados bloqueantes)
+
+Tasks adicionadas após `review.md` rodada 1 (veredito NECESSITA CORREÇÕES). Não são novos requisitos REG-NN — são correções de achados #1 (critical) e #2 (major) do review. Independentes entre si (arquivos distintos), podem rodar em paralelo.
+
+### T11: Habilitar CORS no backend [P]
+
+**What**: `bootstrap()` em `main.ts` passa a chamar `app.enableCors()`, liberando a origem do frontend, para que o `fetch` do navegador (bloqueado hoje) funcione de verdade.
+**Where**: `services/backend/src/main.ts`, `services/backend/.env` / `.env.example` (nova var `FRONTEND_URL`)
+**Depends on**: None
+**Reuses**: N/A
+**Requirement**: Achado #1 (critical) de `review.md` rodada 1
+
+**Tools**:
+- Skill: `makuco-backend`
+
+**Done when**:
+- [x] `app.enableCors({ origin: process.env.FRONTEND_URL ?? 'http://localhost:3000' })` chamado antes de `app.listen`
+- [x] `FRONTEND_URL` documentada em `.env.example` (sem valor real)
+- [x] Teste de integração comprova que a resposta inclui o header `Access-Control-Allow-Origin` correto
+
+**Status**: ✅ Concluída — commit `ef24a84`. `configureApp` extraído para `src/configure-app.ts` (não em `main.ts`) porque `main.ts` executa `bootstrap()` como efeito colateral no escopo do módulo — importar dele para o teste subiria um segundo servidor real e colidiria de porta (`EADDRINUSE`), achado durante a própria implementação. (Nota histórica: T11 e T12 rodaram em paralelo sem isolamento de worktree e foram commitados juntos por engano em `c775898`; esse commit foi desfeito via `git reset --soft` e reaplicado como dois commits limpios — este é um deles. Lição registrada em `.makuco/STATE.md`.)
+
+**Tests**: integration (Supertest — request com header `Origin` simulando o frontend, assert no header de resposta)
+**Gate**: full
+
+**Commit**: `fix(backend): habilita CORS para a origem do frontend`
+
+---
+
+### T12: Rate limiting no endpoint de registro [P]
+
+**What**: Adiciona `@nestjs/throttler` e aplica um guard de rate limit em `POST /auth/register`, para impedir criação em massa de contas e sondagem de e-mails via respostas 409 repetidas.
+**Where**: `services/backend/src/app.module.ts` (registra `ThrottlerModule` globalmente), `services/backend/src/auth/auth.controller.ts` (ou guard global — decisão da implementação)
+**Depends on**: None
+**Reuses**: N/A
+**Requirement**: Achado #2 (major) de `review.md` rodada 1
+
+**Tools**:
+- Skill: `makuco-backend`
+
+**Done when**:
+- [x] `@nestjs/throttler` instalado e configurado (limite razoável, ex.: 5 requisições/minuto por IP)
+- [x] `POST /auth/register` retorna 429 ao exceder o limite
+- [x] Demais endpoints não ficam bloqueados pelo mesmo limite (guard aplicado só no endpoint via `@UseGuards`/`@Throttle`, não globalmente via `APP_GUARD`)
+
+**Status**: ✅ Concluída — commit `1195afc`. (Nota histórica: T11 e T12 rodaram em paralelo sem isolamento de worktree e ambos fizeram `git add`/commit quase ao mesmo tempo no mesmo working tree, misturando os dois no mesmo commit `c775898` por engano; esse commit foi desfeito via `git reset --soft` e reaplicado como dois commits limpios — este é um deles. Lição registrada em `.makuco/STATE.md` para usar `isolation: worktree` da próxima vez que tasks paralelas envolverem commits.)
+
+**Tests**: integration (Supertest — N+1 requisições rápidas ao endpoint, assert 429 na última)
+**Gate**: full
+
+**Commit**: `fix(backend): adiciona rate limiting ao endpoint de registro`
+
+---
+
 ## Task Granularity Check
 
 | Task | Scope | Status |

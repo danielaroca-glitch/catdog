@@ -20,7 +20,7 @@
 
 ## Exclusões de cobertura (decididas no fechamento de pbi-001)
 
-- **Backend**: `main.ts` e `*.module.ts` excluídos (`coveragePathIgnorePatterns` em `package.json`) — arquivos de wiring/composição do NestJS, sem lógica de negócio; a integridade da montagem já é validada pelos testes e2e, que bootam o `AppModule` completo.
+- **Backend**: `main.ts` e `*.module.ts` excluídos (`coveragePathIgnorePatterns` em `package.json`) — arquivos de wiring/composição do NestJS, sem lógica de negócio; a integridade da montagem já é validada pelos testes e2e, que bootam o `AppModule` completo. `configure-app.ts` também excluído — tem lógica real (CORS, ValidationPipe), mas só é exercitado por `test/cors.e2e-spec.ts` (e2e), não por um teste unitário; a métrica de cobertura unitária e a de e2e não são somadas por esta config.
 - **Frontend**: `src/components/ui/**` excluído (`coveragePathIgnorePatterns` em `jest.config.ts`) — primitivas geradas pelo `shadcn` CLI (`npx shadcn add ...`), não código de negócio próprio do projeto.
 
 ## Gate Check Commands

@@ -12,7 +12,7 @@ modo: 'local-only'
 artifacts_loaded: ['feature.md', 'decisions.md', 'pbis.md', 'pbi.md', 'DESIGN.md', 'EXPERIENCE.md', 'STATE.md']
 ca_imutaveis: true
 spec_construido: true
-total_tasks: 10
+total_tasks: 12
 skills_necessarias: ['makuco-backend', 'makuco-frontend']
 proxima_fase: 'concluida'
 riscos: []
