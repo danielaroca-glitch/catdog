@@ -1,6 +1,7 @@
 import { Provider } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import WebSocket from 'ws';
 
 export const SUPABASE_CLIENT = 'SUPABASE_CLIENT';
 
@@ -25,6 +26,9 @@ export const supabaseClientProvider: Provider = {
         autoRefreshToken: false,
         persistSession: false,
       },
+      // Node 20 não tem WebSocket nativo — o realtime-js do supabase-js exige um transport explícito.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      realtime: { transport: WebSocket as any },
     });
   },
   inject: [ConfigService],

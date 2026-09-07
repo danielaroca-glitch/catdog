@@ -38,12 +38,17 @@ describe('supabaseClientProvider', () => {
     const client = factory(configService);
 
     expect(createClient).toHaveBeenCalledTimes(1);
-    expect(createClient).toHaveBeenCalledWith(FAKE_URL, FAKE_SERVICE_ROLE_KEY, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    expect(createClient).toHaveBeenCalledWith(
+      FAKE_URL,
+      FAKE_SERVICE_ROLE_KEY,
+      expect.objectContaining({
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+        realtime: expect.objectContaining({ transport: expect.any(Function) }),
+      }),
+    );
     expect(client).toEqual({ __fake: 'supabase-client' });
   });
 
