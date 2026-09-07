@@ -406,6 +406,34 @@ Task adicionada após `review.md` Rodada de revisão 2 (veredito NECESSITA CORRE
 
 ---
 
+## Correções da Review — Rodada 3 (achado bloqueante)
+
+Task adicionada após `review.md` Rodada de revisão 3 (veredito NECESSITA CORREÇÕES). Não é um novo requisito REG-NN — é a correção do achado #1 (major) da rodada 3. Tratada como quick-mode (1 arquivo, sem nova dependência, sem decisão de design).
+
+### T14: Fazer o teste de trust proxy exercitar `configureApp()`
+
+**What**: `test/trust-proxy.e2e-spec.ts` montava a app de teste manualmente (`app.useGlobalPipes(new ValidationPipe())`) em vez de chamar `configureApp(app)` — provava o comportamento default do Express/Nest, não a configuração real de produção, não travando uma futura regressão dentro de `configureApp()`.
+**Where**: `services/backend/test/trust-proxy.e2e-spec.ts`
+**Depends on**: None
+**Reuses**: `configureApp` (já existe em `services/backend/src/configure-app.ts`)
+**Requirement**: Achado #1 (major) de `review.md` Rodada de revisão 3
+
+**Tools**:
+- Skill: `makuco-backend`
+
+**Done when**:
+- [x] `test/trust-proxy.e2e-spec.ts` importa e chama `configureApp(app)` no `beforeAll`, no mesmo ponto de `test/cors.e2e-spec.ts` (antes de `app.init()`), em vez de montar `ValidationPipe` manualmente
+- [x] Teste continua passando com a mesma asserção (429 na 6ª tentativa com `X-Forwarded-For` forjado)
+
+**Status**: ✅ Concluída — commit `b766162`. Quality gate per-task (escopo `per-task`): Gate 0 PASS, Gate 1 PASS (reaproveitado do build+lint), Gate 3 SKIP (Docker indisponível) com checagem manual PASS, Gate 4 PASS. Nenhum achado bloqueante.
+
+**Tests**: integration (mesmo teste de `test/trust-proxy.e2e-spec.ts`, agora exercitando `configureApp()` real)
+**Gate**: full
+
+**Commit**: `fix(backend): faz o teste de trust proxy exercitar configureApp() real`
+
+---
+
 ## Task Granularity Check
 
 | Task | Scope | Status |
