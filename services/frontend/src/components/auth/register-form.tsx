@@ -1,9 +1,13 @@
 "use client"
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { Loader2 } from "lucide-react"
 import { Controller, useForm } from "react-hook-form"
 import * as z from "zod"
 
+import { ApiError, registerUser } from "@/lib/api/auth"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -22,6 +26,17 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
+const REGISTER_CONFIRMATION_PENDING_ROUTE = "/registro/confirmacao-pendente"
+
+// REG-05: uma vez que o backend já respondeu 409, sabemos que a única causa
+// possível é e-mail duplicado — por isso a mensagem aqui é específica, mesmo
+// que a mensagem retornada pelo backend seja deliberadamente genérica (para
+// não revelar o estado de confirmação da conta existente).
+const DUPLICATE_EMAIL_MESSAGE =
+  "Este e-mail já está cadastrado. Tente fazer login ou recuperar sua senha."
+const GENERIC_SUBMIT_ERROR_MESSAGE =
+  "Não foi possível concluir o cadastro. Tente novamente mais tarde."
+
 const registerFormSchema = z
   .object({
     nome: z.string().min(1, "Informe seu nome."),
@@ -38,14 +53,19 @@ export type RegisterFormValues = z.infer<typeof registerFormSchema>
 
 export interface RegisterFormProps {
   /**
-   * Chamado com os dados validados no submit. A integração real com a API de
-   * registro (POST /auth/register) é feita em uma task separada (T9) — aqui
-   * o formulário apenas garante que só dados válidos chegam a este callback.
+   * Callback opcional chamado com os dados validados no submit, no lugar da
+   * integração padrão com a API de registro (`registerUser`, ver
+   * `src/lib/api/auth.ts`). Usado principalmente em testes para observar o
+   * submit sem depender de `fetch`. Quando omitido, o formulário chama
+   * `POST /auth/register`, trata o 409 (REG-05) e redireciona para
+   * `/registro/confirmacao-pendente` em caso de sucesso (REG-02).
    */
   onSubmit?: (values: RegisterFormValues) => void | Promise<void>
 }
 
 export function RegisterForm({ onSubmit }: RegisterFormProps) {
+  const router = useRouter()
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerFormSchema),
     mode: "onBlur",
@@ -60,7 +80,23 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
   const isSubmitting = form.formState.isSubmitting
 
   async function handleValidSubmit(values: RegisterFormValues) {
-    await onSubmit?.(values)
+    setSubmitError(null)
+
+    if (onSubmit) {
+      await onSubmit(values)
+      return
+    }
+
+    try {
+      await registerUser(values)
+      router.push(REGISTER_CONFIRMATION_PENDING_ROUTE)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setSubmitError(DUPLICATE_EMAIL_MESSAGE)
+      } else {
+        setSubmitError(GENERIC_SUBMIT_ERROR_MESSAGE)
+      }
+    }
   }
 
   return (
@@ -78,6 +114,16 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
           onSubmit={form.handleSubmit(handleValidSubmit)}
         >
           <FieldGroup>
+            {submitError && (
+              <div
+                role="alert"
+                aria-live="polite"
+                data-testid="register-form-error"
+                className="text-sm font-normal text-destructive"
+              >
+                {submitError}
+              </div>
+            )}
             <Controller
               name="nome"
               control={form.control}
@@ -190,6 +236,13 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
           disabled={isSubmitting}
           data-testid="register-submit-button"
         >
+          {isSubmitting && (
+            <Loader2
+              className="animate-spin"
+              aria-hidden="true"
+              data-testid="register-submit-spinner"
+            />
+          )}
           {isSubmitting ? "Registrando..." : "Registrar"}
         </Button>
       </CardFooter>

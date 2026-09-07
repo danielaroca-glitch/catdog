@@ -3,6 +3,14 @@ import userEvent from "@testing-library/user-event"
 
 import { RegisterForm } from "./register-form"
 
+// RegisterForm usa `useRouter` (next/navigation) para redirecionar após um
+// submit bem-sucedido sem `onSubmit` (T9). Nestes testes o `onSubmit` é
+// sempre fornecido — o router nunca é de fato usado — mas o hook ainda
+// precisa de um contexto de App Router para não lançar ao renderizar.
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn() }),
+}))
+
 function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   return async () => {
     await user.type(screen.getByTestId("register-nome-input"), "Marina")
