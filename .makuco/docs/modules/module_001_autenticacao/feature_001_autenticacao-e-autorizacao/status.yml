@@ -26,8 +26,10 @@ pbis:
     technical: pending
     spec: pending
     plan: pending
-    review: changes-requested
+    review: approved
     documentation: pending
+    tasks:
+      task-14: done
   login-e-sessao-com-refresh-token:
     current_stage: "PBI proposto (makuco-analisar)"
     business: pending

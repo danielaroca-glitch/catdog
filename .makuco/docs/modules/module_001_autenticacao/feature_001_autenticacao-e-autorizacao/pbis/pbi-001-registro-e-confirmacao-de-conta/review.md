@@ -143,6 +143,39 @@ Não aplicável no sentido usual — T13 não implementa um novo critério REG-N
 - Dedup: o achado sobre "teste não usa `configureApp()`" foi levantado por duas passes independentes (patterns, como suggestion; tests, como critical/major) — consolidado em um único achado (#1), mantendo a redação mais concreta (a da pass de testes) por nomear o cenário de regressão exato.
 - Verificação empírica: a pass de segurança confirmou, por inspeção do repositório (ausência de Dockerfile/CI-CD/config de PaaS), que a premissa da decisão documentada (nenhuma topologia de deploy real hoje) é verdadeira — não é uma suposição não verificada.
 
+## Rodada de revisão 4 — 2026-09-07
+
+**Veredicto:** APROVADO
+**Tasks revisadas:** T14 (fazer o teste de trust proxy exercitar configureApp() real) — correção do achado #1 da rodada 3
+
+### Resumo
+
+Revisão de rodada 4 (modo PBI), escopo incremental: 1 arquivo alterado desde a rodada 3 (commit `7f2136c`) até o HEAD atual (`847e0f0`) — a correção de T14 (troca de montagem manual da app de teste por `configureApp()` real). 6 passes aplicáveis executadas (pass 5/segurança marcada `N/A` — nenhuma superfície de segurança nova nesta mudança pontual de setup de teste; fan-out de 4 subagentes em paralelo para passes 3/4/6/7, mais passes 1-2 no orquestrador), 1 achado após dedup (0 critical, 0 major, 0 minor, 1 suggestion), a partir de 1 candidato bruto. Veredicto **APROVADO** — o achado #1 da rodada 3 está corrigido, confirmado inclusive por verificação concreta de regressão: se uma futura alteração reintroduzir `app.set('trust proxy', true)` dentro de `configureApp()`, este teste passaria a falhar (deixaria de bloquear a 6ª tentativa com 429), provando que a trava de regressão agora funciona de verdade.
+
+Após 4 rodadas de review (1: 2 achados bloqueantes — CORS crítico + rate limiting major; 2: 1 achado major novo — trust proxy sem configuração; 3: 1 achado major novo — teste de trust proxy não exercitava a função real; 4: aprovado), a PBI **Registro e confirmação de conta** está formalmente aprovada.
+
+### Rodada anterior (verificação do achado bloqueante da rodada 3)
+
+| # (rodada 3) | Severidade | Status nesta rodada | Evidência |
+| --- | --- | --- | --- |
+| 1 | major | **CORRIGIDO** | `services/backend/test/trust-proxy.e2e-spec.ts` agora importa e chama `configureApp(app)` (de `../src/configure-app`) no `beforeAll`, antes de `app.init()` — mesmo padrão de `test/cors.e2e-spec.ts`. Confirmado que `configureApp()` não chama `app.set('trust proxy', ...)`, preservando a decisão documentada. Verificação concreta de regressão: se `app.set('trust proxy', true)` fosse adicionado dentro de `configureApp()`, o `ThrottlerGuard` passaria a ver um IP diferente por requisição (via `X-Forwarded-For` forjado), a 6ª tentativa não retornaria mais 429, e o teste falharia — a trava de regressão funciona de verdade agora, o que não acontecia na versão anterior (app montada manualmente). Import de `ValidationPipe` removido corretamente, sem import morto. |
+
+### Achados (rodada 4)
+
+| # | Severidade | Arquivo | Linha | Categoria | Descrição | Recomendação |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | suggestion | `.makuco/docs/codebase/testing.md` | L23 | documentation-drift | O texto afirma que `configure-app.ts` "só é exercitado por `test/cors.e2e-spec.ts` (e2e)" — isso deixou de ser verdade após a correção de T14, já que `trust-proxy.e2e-spec.ts` agora também exercita `configureApp()`. | Atualizar a nota em `testing.md` para citar ambos os specs (`cors.e2e-spec.ts` e `trust-proxy.e2e-spec.ts`) como exercitadores de `configure-app.ts`. |
+
+### Cobertura dos critérios de aceite
+
+Não aplicável no sentido usual — T14 não implementa um novo critério REG-NN, corrige o achado #1 (major) de `review.md` Rodada de revisão 3. Os 2 itens de "Done when" de T14 (importar e chamar `configureApp(app)`; teste continua passando com a mesma asserção) foram verificados end-to-end e confirmados corretos pelas passes 4 e 6.
+
+### Notas de escopo
+
+- Fora de escopo de achado: nenhum arquivo excluído — o único arquivo alterado (`trust-proxy.e2e-spec.ts`) foi avaliado.
+- Passes aplicáveis: 1, 2, 3, 4, 6, 7 executadas; pass 5 (segurança) marcada `N/A` — não há superfície de segurança nova nesta mudança de setup de teste (o comportamento de produção não muda, só o que o teste exercita). Fan-out de 4 subagentes (passes 3/4/6/7) em paralelo.
+- Contexto de convenções ausente: `.makuco/docs/codebase/` só contém `testing.md` — mesma lacuna observada nas rodadas 1, 2 e 3, agora com o achado #1 acima apontando uma imprecisão pontual nesse mesmo arquivo.
+
 ---
 
-Próximo passo: volte ao `makuco-desenvolver` para uma nova task corrigindo o achado #1 desta rodada (fazer `test/trust-proxy.e2e-spec.ts` chamar `configureApp(app)` em vez de montar a app manualmente) e rode uma nova rodada de review depois.
+Próximo passo: PBI aprovada — seguindo para `makuco-documentation` conforme o step-05 desta skill.
