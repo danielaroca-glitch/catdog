@@ -15,6 +15,23 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
  * de uma origem diferente (Next.js em outra porta), e o navegador bloqueia
  * a resposta sem o header `Access-Control-Allow-Origin` correto.
  */
+/**
+ * [DECISÃO] Achado #1 (major) de `review.md` Rodada de revisão 2: o
+ * `ThrottlerGuard` (ver `app.module.ts`/`auth.controller.ts`) identifica o
+ * cliente por `req.ip`. Sem `app.set('trust proxy', ...)`, o Express ignora
+ * `X-Forwarded-For` e resolve `req.ip` sempre a partir do socket da conexão
+ * direta — correto para o cenário atual do projeto (dev local, sem nenhuma
+ * topologia de deploy definida) e comprovado por
+ * `test/trust-proxy.e2e-spec.ts`.
+ *
+ * `trust proxy` NÃO é configurado aqui de propósito: ligá-lo sem saber o
+ * número real de hops confiáveis abriria o rate limit a bypass via
+ * `X-Forwarded-For` forjado. Esta decisão está registrada em
+ * `.makuco/STATE.md` e deve ser revisitada assim que uma topologia de
+ * deploy real (reverse proxy/load balancer) for definida numa PBI futura de
+ * infraestrutura — nesse momento, configurar o número exato de hops
+ * confiáveis, nunca `true` genérico.
+ */
 export function configureApp(app: INestApplication): void {
   app.useGlobalPipes(new ValidationPipe());
   app.enableCors({
