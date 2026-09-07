@@ -1,0 +1,24 @@
+@startuml
+' Fluxo: Autorização por papel e redirecionamento pós-login (PBI 3)
+start
+:Login bem-sucedido (PBI 2);
+:Backend consulta papel em profiles (guard);
+
+if (papel == admin?) then (sim)
+  :Redireciona para área administrativa;
+else (não — adotante)
+  :Redireciona para área do cliente;
+endif
+
+:Usuário navega no sistema;
+if (rota acessada é administrativa?) then (sim)
+  if (papel == admin?) then (sim)
+    :Acesso permitido;
+  else (não)
+    :Acesso bloqueado (CA-02);
+  endif
+else (rota pública/cliente)
+  :Acesso permitido;
+endif
+stop
+@enduml

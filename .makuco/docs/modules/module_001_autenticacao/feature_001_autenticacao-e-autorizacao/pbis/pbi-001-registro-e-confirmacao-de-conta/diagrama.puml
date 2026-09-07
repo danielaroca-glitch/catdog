@@ -1,0 +1,20 @@
+@startuml
+' Fluxo: Registro e confirmação de conta (PBI 1)
+actor "Adotante" as user
+boundary "Frontend (Next.js)" as fe
+control "Backend (NestJS)" as be
+participant "Supabase Auth" as auth
+database "Postgres (profiles)" as db
+
+user -> fe : Preenche nome, email, senha, confirmação
+fe -> fe : Valida senha == confirmação (RN-05)
+fe -> be : Envia dados de registro
+be -> auth : Cria usuário (signUp)
+auth -> db : Trigger cria linha em profiles\n(role=adotante) (RN-01)
+auth --> user : Envia e-mail de confirmação
+be --> fe : Registro criado (conta não confirmada)
+fe --> user : Exibe mensagem "confirme seu e-mail"
+
+user -> auth : Acessa link de confirmação
+auth -> auth : Marca conta como confirmada
+@enduml

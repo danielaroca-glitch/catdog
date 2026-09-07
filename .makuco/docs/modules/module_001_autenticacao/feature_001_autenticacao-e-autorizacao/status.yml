@@ -1,0 +1,46 @@
+# status.yml — Source of truth for a feature's progress.
+# ONLY the makuco-copy-writer agent writes to this file. Main agents read it but never edit it.
+# Stage values (feature level): pending | in-progress | done
+# PBI stage values: pending | done   (except `review`)
+# review:           pending | approved | changes-requested
+# task values:      pending | review | done
+
+module: module_001_autenticacao
+feature: feature_001_autenticacao-e-autorizacao
+created_at: 2026-09-07
+feature_prd_artifact: .makuco/docs/modules/module_001_autenticacao/feature_001_autenticacao-e-autorizacao/feature.md
+
+# current_stage — estágio atual da feature/PBI no processo Makuco.
+current_stage: "Estrutura de PBIs (makuco-analisar)"
+
+# Feature-level stages (run once per feature)
+stages:
+  discovery: pending
+  structure: done
+
+# PBI-level stages (run once per PBI; different PBIs may progress in parallel).
+pbis:
+  registro-e-confirmacao-de-conta:
+    current_stage: "PBI proposto (makuco-analisar)"
+    business: pending
+    technical: pending
+    spec: pending
+    plan: pending
+    review: pending
+    documentation: pending
+  login-e-sessao-com-refresh-token:
+    current_stage: "PBI proposto (makuco-analisar)"
+    business: pending
+    technical: pending
+    spec: pending
+    plan: pending
+    review: pending
+    documentation: pending
+  autorizacao-por-papel-e-redirecionamento:
+    current_stage: "PBI proposto (makuco-analisar)"
+    business: pending
+    technical: pending
+    spec: pending
+    plan: pending
+    review: pending
+    documentation: pending

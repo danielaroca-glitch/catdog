@@ -1,0 +1,35 @@
+@startuml
+' Fluxo: Login e sessão com refresh token (PBI 2)
+actor "Usuário (admin ou adotante)" as user
+boundary "Frontend (Next.js)" as fe
+control "Backend (NestJS)" as be
+participant "Supabase Auth" as auth
+
+user -> fe : Informa email e senha
+fe -> be : Envia credenciais
+be -> auth : signInWithPassword(email, senha)
+
+alt e-mail não confirmado
+  auth --> be : Erro (conta não confirmada)
+  be --> fe : Login bloqueado (RN-02)
+  fe --> user : Exibe opção de reenviar confirmação
+else credenciais inválidas
+  auth --> be : Erro genérico
+  be --> fe : Credenciais inválidas
+  fe --> user : Exibe erro genérico
+else sucesso
+  auth --> be : access_token + refresh_token
+  be --> fe : Sessão criada
+  fe --> user : Login concluído
+end
+
+user -> be : Requisição futura com refresh_token expirado
+be -> auth : refreshSession(refresh_token)
+alt refresh_token já usado antes (reuso detectado)
+  auth --> be : Erro — invalida toda a sessão (RN-03)
+  be --> fe : Sessão encerrada, requer novo login
+else refresh válido
+  auth --> be : Novo access_token + novo refresh_token
+  be --> fe : Sessão renovada
+end
+@enduml
