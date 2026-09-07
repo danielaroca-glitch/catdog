@@ -21,12 +21,12 @@ stages:
 # PBI-level stages (run once per PBI; different PBIs may progress in parallel).
 pbis:
   registro-e-confirmacao-de-conta:
-    current_stage: "PBI proposto (makuco-analisar)"
+    current_stage: "7. Review"
     business: pending
     technical: pending
     spec: pending
     plan: pending
-    review: pending
+    review: changes-requested
     documentation: pending
   login-e-sessao-com-refresh-token:
     current_stage: "PBI proposto (makuco-analisar)"
