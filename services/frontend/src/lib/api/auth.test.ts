@@ -18,7 +18,7 @@ describe("registerUser", () => {
       email: payload.email,
       role: "adotante" as const,
     }
-    global.fetch = jest.fn().mockResolvedValue({
+    globalThis.fetch = jest.fn().mockResolvedValue({
       ok: true,
       status: 201,
       json: () => Promise.resolve(registeredUser),
@@ -27,7 +27,7 @@ describe("registerUser", () => {
     const result = await registerUser(payload)
 
     expect(result).toEqual(registeredUser)
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringContaining("/auth/register"),
       expect.objectContaining({
         method: "POST",
@@ -38,7 +38,7 @@ describe("registerUser", () => {
   })
 
   it("throws an ApiError with the backend's message on a JSON error body (e.g. 409)", async () => {
-    global.fetch = jest.fn().mockResolvedValue({
+    globalThis.fetch = jest.fn().mockResolvedValue({
       ok: false,
       status: 409,
       json: () => Promise.resolve({ message: "E-mail já cadastrado." }),
@@ -52,7 +52,7 @@ describe("registerUser", () => {
   })
 
   it("throws an ApiError with a generic message when the error body isn't valid JSON", async () => {
-    global.fetch = jest.fn().mockResolvedValue({
+    globalThis.fetch = jest.fn().mockResolvedValue({
       ok: false,
       status: 500,
       json: () => Promise.reject(new Error("not json")),
@@ -65,7 +65,7 @@ describe("registerUser", () => {
   })
 
   it("throws an ApiError with the generic message when the JSON body has no 'message' field", async () => {
-    global.fetch = jest.fn().mockResolvedValue({
+    globalThis.fetch = jest.fn().mockResolvedValue({
       ok: false,
       status: 400,
       json: () => Promise.resolve({ some: "other-shape" }),

@@ -5,6 +5,36 @@ import { RegisterDto } from '../dto/register.dto';
 import { EmailAlreadyExistsException } from '../exceptions/email-already-exists.exception';
 import { RegisterUseCase } from './register.use-case';
 
+function buildProfilesQuery(result: { data: unknown; error: unknown }) {
+  return {
+    select: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    single: jest.fn().mockResolvedValue(result),
+  };
+}
+
+function buildSupabaseMock() {
+  return {
+    auth: {
+      admin: {
+        createUser: jest.fn(),
+      },
+    },
+    from: jest.fn(),
+  };
+}
+
+async function buildUseCase(supabase: unknown) {
+  const module = await Test.createTestingModule({
+    providers: [
+      RegisterUseCase,
+      { provide: SUPABASE_CLIENT, useValue: supabase },
+    ],
+  }).compile();
+
+  return module.get(RegisterUseCase);
+}
+
 describe('RegisterUseCase', () => {
   const validDto: RegisterDto = Object.assign(new RegisterDto(), {
     nome: 'Daniela Roca',
@@ -12,36 +42,6 @@ describe('RegisterUseCase', () => {
     senha: 'senhaForte123',
     confirmarSenha: 'senhaForte123',
   });
-
-  function buildProfilesQuery(result: { data: unknown; error: unknown }) {
-    return {
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      single: jest.fn().mockResolvedValue(result),
-    };
-  }
-
-  function buildSupabaseMock() {
-    return {
-      auth: {
-        admin: {
-          createUser: jest.fn(),
-        },
-      },
-      from: jest.fn(),
-    };
-  }
-
-  async function buildUseCase(supabase: unknown) {
-    const module = await Test.createTestingModule({
-      providers: [
-        RegisterUseCase,
-        { provide: SUPABASE_CLIENT, useValue: supabase },
-      ],
-    }).compile();
-
-    return module.get(RegisterUseCase);
-  }
 
   afterEach(() => {
     jest.clearAllMocks();
@@ -107,8 +107,8 @@ describe('RegisterUseCase', () => {
     let caughtMessage = '';
     try {
       await useCase.execute(validDto);
-    } catch (thrown) {
-      caughtMessage = (thrown as Error).message;
+    } catch (error_) {
+      caughtMessage = (error_ as Error).message;
     }
 
     expect(caughtMessage).not.toMatch(/confirm/i);

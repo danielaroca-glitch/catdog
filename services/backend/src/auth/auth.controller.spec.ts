@@ -4,6 +4,15 @@ import { EmailAlreadyExistsException } from './exceptions/email-already-exists.e
 import { RegisteredUser, RegisterUseCase } from './use-cases/register.use-case';
 import { AuthController } from './auth.controller';
 
+async function buildController(registerUseCase: Partial<RegisterUseCase>) {
+  const module = await Test.createTestingModule({
+    controllers: [AuthController],
+    providers: [{ provide: RegisterUseCase, useValue: registerUseCase }],
+  }).compile();
+
+  return module.get(AuthController);
+}
+
 describe('AuthController', () => {
   const validDto: RegisterDto = Object.assign(new RegisterDto(), {
     nome: 'Daniela Roca',
@@ -11,15 +20,6 @@ describe('AuthController', () => {
     senha: 'senhaForte123',
     confirmarSenha: 'senhaForte123',
   });
-
-  async function buildController(registerUseCase: Partial<RegisterUseCase>) {
-    const module = await Test.createTestingModule({
-      controllers: [AuthController],
-      providers: [{ provide: RegisterUseCase, useValue: registerUseCase }],
-    }).compile();
-
-    return module.get(AuthController);
-  }
 
   it('retorna 201 (implícito) com o usuário registrado em sucesso', async () => {
     const registeredUser: RegisteredUser = {

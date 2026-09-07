@@ -38,6 +38,10 @@ describe('profiles trigger (e2e)', () => {
   it('creates a profiles row with role "adotante" when a new user signs up (RN-01)', async () => {
     const email = `catdog-e2e-${Date.now()}@example.com`;
 
+    // Senha de fixture para uma conta de teste descartável (criada e removida
+    // neste mesmo teste, ver afterEach) — não é uma credencial real. Aceito
+    // como achado do Sonar (S2068) na revisão de fechamento da PBI, sem
+    // necessidade de externalizar para env var.
     const { data, error } = await supabase.auth.admin.createUser({
       email,
       password: 'TestPassword123!',

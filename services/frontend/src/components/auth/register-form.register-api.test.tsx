@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
-import { ApiError } from "@/lib/api/auth"
+import { ApiError, registerUser } from "@/lib/api/auth"
 
 import { RegisterForm } from "./register-form"
 
@@ -25,8 +25,6 @@ jest.mock("../../lib/api/auth", () => {
     registerUser: jest.fn(),
   }
 })
-
-import { registerUser } from "@/lib/api/auth"
 
 const registerUserMock = registerUser as jest.MockedFunction<
   typeof registerUser

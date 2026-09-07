@@ -24,6 +24,15 @@ interface RegisteredUserResponse {
  * - E2E-02 (REG-01): senha e confirmação diferentes — 400.
  * - E2E-03 (REG-05): e-mail duplicado — 409, mensagem genérica.
  */
+function validPayload(email: string) {
+  return {
+    nome: 'Daniela Roca',
+    email,
+    senha: 'senhaForte123',
+    confirmarSenha: 'senhaForte123',
+  };
+}
+
 describe('POST /auth/register (e2e)', () => {
   let app: INestApplication<App>;
   let moduleRef: TestingModule;
@@ -54,15 +63,6 @@ describe('POST /auth/register (e2e)', () => {
   afterAll(async () => {
     await app.close();
   });
-
-  function validPayload(email: string) {
-    return {
-      nome: 'Daniela Roca',
-      email,
-      senha: 'senhaForte123',
-      confirmarSenha: 'senhaForte123',
-    };
-  }
 
   it('E2E-01: registra com sucesso e retorna papel adotante (REG-02, REG-03, REG-04)', async () => {
     const email = `catdog-e2e-t7-${Date.now()}@example.com`;

@@ -60,7 +60,7 @@ export interface RegisterFormProps {
    * `POST /auth/register`, trata o 409 (REG-05) e redireciona para
    * `/registro/confirmacao-pendente` em caso de sucesso (REG-02).
    */
-  onSubmit?: (values: RegisterFormValues) => void | Promise<void>
+  readonly onSubmit?: (values: RegisterFormValues) => void | Promise<void>
 }
 
 export function RegisterForm({ onSubmit }: RegisterFormProps) {

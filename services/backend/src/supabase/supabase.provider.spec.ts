@@ -6,6 +6,18 @@ jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn().mockReturnValue({ __fake: 'supabase-client' }),
 }));
 
+const createClientMock = createClient as jest.MockedFunction<
+  typeof createClient
+>;
+
+function buildConfigService(
+  values: Record<string, string | undefined>,
+): ConfigService {
+  return {
+    get: jest.fn((key: string) => values[key]),
+  } as unknown as ConfigService;
+}
+
 describe('supabaseClientProvider', () => {
   const FAKE_URL = 'https://test.supabase.co';
   const FAKE_SERVICE_ROLE_KEY = 'test-key';
@@ -13,14 +25,6 @@ describe('supabaseClientProvider', () => {
   afterEach(() => {
     jest.clearAllMocks();
   });
-
-  function buildConfigService(
-    values: Record<string, string | undefined>,
-  ): ConfigService {
-    return {
-      get: jest.fn((key: string) => values[key]),
-    } as unknown as ConfigService;
-  }
 
   it('has the expected injection token', () => {
     expect(supabaseClientProvider.provide).toBe(SUPABASE_CLIENT);
@@ -37,8 +41,8 @@ describe('supabaseClientProvider', () => {
     ) => unknown;
     const client = factory(configService);
 
-    expect(createClient).toHaveBeenCalledTimes(1);
-    expect(createClient).toHaveBeenCalledWith(
+    expect(createClientMock).toHaveBeenCalledTimes(1);
+    expect(createClientMock).toHaveBeenCalledWith(
       FAKE_URL,
       FAKE_SERVICE_ROLE_KEY,
       expect.objectContaining({
@@ -46,9 +50,13 @@ describe('supabaseClientProvider', () => {
           autoRefreshToken: false,
           persistSession: false,
         },
-        realtime: expect.objectContaining({ transport: expect.any(Function) }),
       }),
     );
+    // Verificado à parte (em vez de aninhar `expect.objectContaining` dentro
+    // de outro) para não disparar `no-unsafe-assignment` do lint type-aware —
+    // o retorno de `expect.objectContaining` é tipado como `any`.
+    const [, , options] = createClientMock.mock.calls[0];
+    expect(typeof options?.realtime?.transport).toBe('function');
     expect(client).toEqual({ __fake: 'supabase-client' });
   });
 
