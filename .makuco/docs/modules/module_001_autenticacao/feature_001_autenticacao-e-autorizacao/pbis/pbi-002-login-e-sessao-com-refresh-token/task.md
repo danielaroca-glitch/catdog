@@ -81,9 +81,11 @@ T7, T4 ──→ T9
 - Skill: `makuco-backend`
 
 **Done when**:
-- [ ] `refreshSession()` bem-sucedido retorna `{ access_token, refresh_token, expires_in }`
-- [ ] `refreshSession()` com token já rotacionado/inválido lança `UnauthorizedException` (401) — não expõe detalhe interno do erro do Supabase
-- [ ] Não reimplementa lógica própria de rotação/família de token — só propaga o resultado nativo do Supabase (ver nota de arquitetura em `spec.md`)
+- [x] `refreshSession()` bem-sucedido retorna `{ access_token, refresh_token, expires_in }`
+- [x] `refreshSession()` com token já rotacionado/inválido lança `UnauthorizedException` (401) — não expõe detalhe interno do erro do Supabase
+- [x] Não reimplementa lógica própria de rotação/família de token — só propaga o resultado nativo do Supabase (ver nota de arquitetura em `spec.md`)
+
+**Status**: ✅ Concluída — commit `b396a6c`. `refresh.dto.ts` não recebeu `.spec.ts` dedicado (campo único com decorators padrão, sem lógica custom como o `@Match` de `RegisterDto`) — decisão razoável, não é uma lacuna. Quality gate per-task: Gate 0/1/4 PASS, Gate 3 SKIP (Docker indisponível) com checagem manual PASS. Nenhum achado bloqueante.
 
 **Tests**: unit
 **Gate**: quick
