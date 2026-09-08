@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { SupabaseModule } from '../supabase/supabase.module';
 import { AuthController } from './auth.controller';
+import { LoginUseCase } from './use-cases/login.use-case';
+import { RefreshUseCase } from './use-cases/refresh.use-case';
 import { RegisterUseCase } from './use-cases/register.use-case';
 
 @Module({
   imports: [SupabaseModule],
   controllers: [AuthController],
-  providers: [RegisterUseCase],
+  providers: [RegisterUseCase, LoginUseCase, RefreshUseCase],
 })
 export class AuthModule {}
