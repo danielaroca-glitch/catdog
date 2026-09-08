@@ -153,11 +153,13 @@ T7, T4 ──→ T9
 - Skill: `makuco-backend`
 
 **Done when**:
-- [ ] `POST /auth/login` — E2E-01 (sucesso), E2E-02 (e-mail não confirmado), E2E-03 (credenciais inválidas) passam contra o Supabase real
-- [ ] `POST /auth/refresh` — E2E-04 (refresh válido emite novo par) passa
-- [ ] E2E-05 (reuso de refresh token invalida a sessão) passa — **se falhar inesperadamente, verificar T5 antes de investigar como bug**
-- [ ] `@UseGuards(ThrottlerGuard)` + `@Throttle` em `/auth/login` (mesmo limite de `/auth/register`, 5/min) — E2E-06 (6ª tentativa em 60s recebe 429)
-- [ ] `/auth/refresh` **não** tem rate limiting (renovação automática legítima não deve esbarrar nisso)
+- [x] `POST /auth/login` — E2E-01 (sucesso), E2E-02 (e-mail não confirmado), E2E-03 (credenciais inválidas) passam contra o Supabase real
+- [x] `POST /auth/refresh` — E2E-04 (refresh válido emite novo par) passa
+- [ ] E2E-05 (reuso de refresh token invalida a sessão) — **NÃO passou empiricamente**: reapresentar o `refresh_token` original (já rotacionado por E2E-04) retornou 201 (novo par de tokens) em vez de 401. Conforme previsto nesta própria task, isso não foi tratado como bug de código — é sinal de que "Refresh Token Rotation" está desabilitada no dashboard do projeto Supabase (ver T5 abaixo, que segue pendente). Nenhum workaround foi tentado no código.
+- [x] `@UseGuards(ThrottlerGuard)` + `@Throttle` em `/auth/login` (mesmo limite de `/auth/register`, 5/min) — E2E-06 (6ª tentativa em 60s recebe 429)
+- [x] `/auth/refresh` **não** tem rate limiting (renovação automática legítima não deve esbarrar nisso)
+
+**Status**: ✅ Concluída (com ressalva) — commit `817f5cc`. Unit: 37/37 passando (incl. os 5 novos testes de `login`/`refresh` no controller). E2E: 13/14 passando — a única falha é E2E-05, pelo motivo documentado acima (não é bug desta task). Quality gate per-task: Gate 0/1/4 PASS (eslint teve 2 erros de formatação corrigidos via `--fix`; build `nest build` limpo), Gate 3 SKIP (Docker indisponível) com checagem manual PASS (nenhuma migração/infra nova nesta task). Nenhum achado bloqueante aberto.
 
 **Tests**: integration
 **Gate**: full
