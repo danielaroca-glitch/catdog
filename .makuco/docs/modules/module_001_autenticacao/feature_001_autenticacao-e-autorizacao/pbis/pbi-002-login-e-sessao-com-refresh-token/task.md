@@ -128,9 +128,11 @@ T7, T4 ──→ T9
 - Skill: `makuco-backend`
 
 **Done when**:
-- [ ] Login com credenciais corretas de conta confirmada retorna `{ access_token, refresh_token, expires_in }`
-- [ ] Login com e-mail não confirmado lança `EmailNotConfirmedException` (mapeada para 403, com um código de erro que o frontend usa para mostrar a opção de reenvio — reaproveita o botão/cooldown já existente na tela de confirmação pendente da pbi-001)
-- [ ] Login com email ou senha incorretos lança `UnauthorizedException` com mensagem genérica ("E-mail ou senha incorretos."), idêntica para os dois casos
+- [x] Login com credenciais corretas de conta confirmada retorna `{ access_token, refresh_token, expires_in }`
+- [x] Login com e-mail não confirmado lança `EmailNotConfirmedException` (mapeada para 403, com um código de erro que o frontend usa para mostrar a opção de reenvio — reaproveita o botão/cooldown já existente na tela de confirmação pendente da pbi-001)
+- [x] Login com email ou senha incorretos lança `UnauthorizedException` com mensagem genérica ("E-mail ou senha incorretos."), idêntica para os dois casos
+
+**Status**: ✅ Concluída — commit `3a1c50d`. `EmailNotConfirmedException` estende `ForbiddenException`, expõe `code` como propriedade da instância e no corpo da resposta (`{ code, message }`) via `super()`, para o frontend checar `response.body.code === 'email_not_confirmed'`. `isEmailNotConfirmed` segue o mesmo padrão de `isEmailAlreadyExists`/`RefreshUseCase` (checa `error.code`, fallback de regex na mensagem). Quality gate per-task: Gate 0/1/4 PASS (eslint teve 2 erros de formatação no spec, corrigidos via `--fix`), Gate 3 SKIP (Docker indisponível) com checagem manual PASS. Nenhum achado bloqueante.
 
 **Tests**: unit
 **Gate**: quick
