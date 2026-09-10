@@ -353,3 +353,13 @@ Ver `review.md` para o achado completo. Correções aplicadas nesta sessão, com
 - Achados minor/suggestion restantes (log de eventos de auth, service role em fluxo de usuário final, isolamento de teste e2e, etc.) não bloqueiam aprovação — ficam registrados em `review.md` como não-bloqueantes.
 
 Pendente: rodada 2 de review para confirmar o fechamento dos achados críticos/major.
+
+## Pós-review — Rodada 2 (2026-09-08, APROVADO)
+
+Ver `review.md` (Rodada 2) para o detalhe completo. Os 5 achados críticos/major da rodada 1 foram confirmados corrigidos por 3 passes independentes (3, 5, 6). 2 achados `major` NOVOS surgiram, introduzidos/revelados pelos próprios fixes da rodada 1, e foram corrigidos nesta mesma sessão:
+
+- **T4 (rate limit em `/auth/refresh`)**: o cliente efêmero por chamada (fix do achado #1) tornou cada requisição não autenticada mais cara, e o endpoint seguia sem nenhum controle. Corrigido com `@Throttle({ limit: 30, ttl: 60000 })`. Commit `ba43505`.
+- **T9 (falha transiente tratada como logout)**: qualquer falha (rede fora do ar, 5xx) deslogava o usuário com mensagem falsa de sessão expirada. Corrigido com retry (até 5x, 5s de intervalo) antes de desistir — só uma resposta HTTP real com status < 500 conta como rejeição de autenticação. Mesmo commit.
+- **T9 (mensagem de sessão expirada via texto livre na URL, vetor de phishing)**: corrigido trocando por um código (`?reason=session_expired`) resolvido contra allowlist fixa. Mesmo commit.
+
+**Ressalva**: os 2 achados major desta rodada foram corrigidos e verificados pelo próprio orquestrador (testes dedicados + suíte completa + e2e real), sem uma Rodada 3 independente — decisão de prazo. PBI aprovada com essa ressalva registrada.
