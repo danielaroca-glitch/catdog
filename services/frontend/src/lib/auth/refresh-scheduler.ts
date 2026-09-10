@@ -25,9 +25,18 @@ import { useSession, type Session, type SetSessionInput } from "./session-contex
  */
 
 const REFRESH_MARGIN_MS = 60_000
+// Achado #5 (review pbi-002): piso mínimo para o delay do agendamento. Sem
+// isso, um `expires_in` pequeno/zero/NaN (sem validação de runtime até este
+// ponto — ver validação em `session-context.tsx`) produzia delay <= 0 e um
+// loop apertado de `POST /auth/refresh`, o único endpoint de auth sem rate
+// limit (de propósito). 5s é curto o bastante para não atrasar uma renovação
+// legítima perto da expiração, mas alto o bastante para não virar loop.
+const MIN_REFRESH_DELAY_MS = 5_000
 const DEFAULT_API_URL = "http://localhost:3001"
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL
 const LOGIN_ROUTE = "/login"
+
+export { MIN_REFRESH_DELAY_MS }
 
 export const SESSION_EXPIRED_MESSAGE = "Sua sessão expirou. Entre novamente."
 
@@ -76,9 +85,20 @@ async function requestSessionRefresh(
   return parseRefreshedSession(response)
 }
 
-function millisecondsUntilRefresh(session: Session): number {
+// Exportada só para teste direto do piso mínimo (achado #5) — não é usada
+// fora deste módulo em código de produção.
+export function millisecondsUntilRefresh(session: Session): number {
   const millisecondsUntilExpiry = session.expires_at - Date.now()
-  return Math.max(millisecondsUntilExpiry - REFRESH_MARGIN_MS, 0)
+  const delay = millisecondsUntilExpiry - REFRESH_MARGIN_MS
+
+  // Guarda explícita contra NaN (ex.: `expires_at` corrompido): `Math.max`
+  // com NaN sempre resulta em NaN, o que viraria um `setTimeout(..., NaN)`
+  // (dispara imediatamente, na prática um delay 0).
+  if (!Number.isFinite(delay)) {
+    return MIN_REFRESH_DELAY_MS
+  }
+
+  return Math.max(delay, MIN_REFRESH_DELAY_MS)
 }
 
 function sessionExpiredLoginUrl(): string {
@@ -100,13 +120,28 @@ export function useRefreshScheduler(): void {
       return undefined
     }
 
+    // Achado #4 (review pbi-002): cancela o *resultado* de uma renovação já
+    // em voo, não só o `setTimeout` pendente. Sem isso, se `session` mudar
+    // (reagendando um novo ciclo) ou o componente desmontar enquanto
+    // `requestSessionRefresh` está pendente, a promise ainda resolvida/rejeitada
+    // executaria `setSession`/`clearSession`+`router.push` com dados já
+    // obsoletos — o cleanup do `clearTimeout` não tem efeito sobre uma
+    // requisição HTTP já disparada.
+    let cancelled = false
+
     async function renewSession(currentSession: Session): Promise<void> {
       try {
         const refreshed = await requestSessionRefresh(
           currentSession.refresh_token
         )
+        if (cancelled) {
+          return
+        }
         setSession(refreshed)
       } catch {
+        if (cancelled) {
+          return
+        }
         clearSession()
         router.push(sessionExpiredLoginUrl())
       }
@@ -117,6 +152,8 @@ export function useRefreshScheduler(): void {
     }, millisecondsUntilRefresh(session))
 
     return () => {
+      cancelled = true
+
       if (timeoutIdRef.current === null) {
         return
       }

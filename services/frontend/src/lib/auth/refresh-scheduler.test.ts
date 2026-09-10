@@ -14,8 +14,13 @@ jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
 }))
 
-import { SessionProvider, useSession } from "./session-context"
-import { SESSION_EXPIRED_MESSAGE, useRefreshScheduler } from "./refresh-scheduler"
+import { SessionProvider, useSession, type Session } from "./session-context"
+import {
+  MIN_REFRESH_DELAY_MS,
+  SESSION_EXPIRED_MESSAGE,
+  millisecondsUntilRefresh,
+  useRefreshScheduler,
+} from "./refresh-scheduler"
 
 const ONE_HOUR_IN_SECONDS = 3600
 const ONE_HOUR_IN_MS = ONE_HOUR_IN_SECONDS * 1000
@@ -199,5 +204,160 @@ describe("useRefreshScheduler", () => {
     })
 
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  // Achado #4 (review pbi-002): o cleanup do efeito cancelava só o
+  // `setTimeout` pendente, não uma renovação (`fetch`) já em voo. Estes
+  // testes controlam manualmente quando o `fetch` mockado resolve/rejeita,
+  // para provar que uma promise que só se resolve *depois* do
+  // desmontar/reagendar não aplica mais `setSession`/`clearSession`.
+  it("ignores a stale in-flight refresh's result when the session changes before it resolves", async () => {
+    let resolveFetch: (value: Response) => void = () => {}
+    const fetchMock = jest.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve
+        })
+    )
+    globalThis.fetch = fetchMock
+
+    const { result } = renderHook(() => useTestHarness(), { wrapper })
+
+    act(() => {
+      result.current.setSession({
+        access_token: "access-1",
+        refresh_token: "refresh-1",
+        expires_in: ONE_HOUR_IN_SECONDS,
+      })
+    })
+
+    act(() => {
+      jest.advanceTimersByTime(ONE_HOUR_IN_MS - REFRESH_MARGIN_MS)
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    // Sessão muda enquanto o refresh acima ainda está em voo (ex.: outro
+    // fluxo já renovou/trocou a sessão) — o efeito antigo deve ser
+    // cancelado no cleanup, mesmo sem o timeout ainda ter disparado de novo.
+    act(() => {
+      result.current.setSession({
+        access_token: "access-B",
+        refresh_token: "refresh-B",
+        expires_in: ONE_HOUR_IN_SECONDS,
+      })
+    })
+
+    await act(async () => {
+      resolveFetch(
+        jsonResponse({
+          access_token: "access-STALE",
+          refresh_token: "refresh-STALE",
+          expires_in: ONE_HOUR_IN_SECONDS,
+        })
+      )
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    // Sem cancelamento, `setSession` seria chamado com os tokens "STALE",
+    // sobrescrevendo a sessão B já vigente.
+    expect(result.current.session).toMatchObject({ access_token: "access-B" })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not clear the session nor redirect when a failing refresh resolves after unmount", async () => {
+    let rejectFetch: (reason?: unknown) => void = () => {}
+    const fetchMock = jest.fn(
+      () =>
+        new Promise<Response>((_resolve, reject) => {
+          rejectFetch = reject
+        })
+    )
+    globalThis.fetch = fetchMock
+
+    const { result, unmount } = renderHook(() => useTestHarness(), { wrapper })
+
+    act(() => {
+      result.current.setSession({
+        access_token: "access-1",
+        refresh_token: "refresh-1",
+        expires_in: ONE_HOUR_IN_SECONDS,
+      })
+    })
+
+    act(() => {
+      jest.advanceTimersByTime(ONE_HOUR_IN_MS - REFRESH_MARGIN_MS)
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    unmount()
+
+    await act(async () => {
+      rejectFetch(new Error("network error"))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(pushMock).not.toHaveBeenCalled()
+  })
+})
+
+// Achado #5 (review pbi-002): `millisecondsUntilRefresh` clampava em `0` via
+// `Math.max(..., 0)`. Com `expires_in` pequeno/zero/NaN (sem validação de
+// runtime até aqui — ver `session-context.test.tsx`), isso produzia um
+// delay <= 0, criando um loop apertado de `POST /auth/refresh`. Estes testes
+// verificam a função pura diretamente, manipulando `expires_at` para simular
+// os cenários sem depender da validação de `setSession`.
+describe("millisecondsUntilRefresh (piso mínimo contra loop de refresh)", () => {
+  const NOW = 1_000_000
+
+  beforeEach(() => {
+    jest.spyOn(Date, "now").mockReturnValue(NOW)
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  it("does not clamp a normal, far-future expires_at below the margin-adjusted delay", () => {
+    const session: Session = {
+      access_token: "a",
+      refresh_token: "r",
+      expires_at: NOW + ONE_HOUR_IN_MS,
+    }
+
+    expect(millisecondsUntilRefresh(session)).toBe(
+      ONE_HOUR_IN_MS - REFRESH_MARGIN_MS
+    )
+  })
+
+  it("floors the delay to MIN_REFRESH_DELAY_MS when expires_at is already at/near now", () => {
+    const session: Session = {
+      access_token: "a",
+      refresh_token: "r",
+      expires_at: NOW,
+    }
+
+    expect(millisecondsUntilRefresh(session)).toBe(MIN_REFRESH_DELAY_MS)
+  })
+
+  it("floors the delay to MIN_REFRESH_DELAY_MS when expires_at is already in the past", () => {
+    const session: Session = {
+      access_token: "a",
+      refresh_token: "r",
+      expires_at: NOW - 100_000,
+    }
+
+    expect(millisecondsUntilRefresh(session)).toBe(MIN_REFRESH_DELAY_MS)
+  })
+
+  it("floors the delay to MIN_REFRESH_DELAY_MS when expires_at is NaN", () => {
+    const session: Session = {
+      access_token: "a",
+      refresh_token: "r",
+      expires_at: NaN,
+    }
+
+    expect(millisecondsUntilRefresh(session)).toBe(MIN_REFRESH_DELAY_MS)
   })
 })
