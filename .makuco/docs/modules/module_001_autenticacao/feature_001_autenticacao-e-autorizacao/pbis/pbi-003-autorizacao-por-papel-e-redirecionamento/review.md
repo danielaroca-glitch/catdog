@@ -59,6 +59,37 @@ Passes 1 (spec/task) e 2 (diff) pelo orquestrador. Passes 3, 4, 5, 6, 7 em subag
 
 34 arquivos, nenhum fora de escopo de achado. Pass 7 (padrões): nenhum achado. Todos os passes completaram após um retry por limite de sessão da API (falha de infraestrutura, não do conteúdo revisado).
 
+## Rodada de revisão 2
+
+**Data**: 2026-09-10
+**Modo**: PBI · **Veredito**: APROVADO
+
+### Resumo
+
+Correção dos 5 achados `major` da Rodada 1. Todos verificados por testes automatizados dedicados a cada mecanismo (não por um novo fan-out de subagentes independentes — ver ressalva de escopo abaixo) + suíte completa (backend 64 unit + 21 e2e reais, frontend 85 unit) + build/lint limpos em ambos os repos.
+
+### Rodada anterior — status dos achados major
+
+| # | Achado (rodada 1) | Status |
+| - | - | - |
+| 1 | major — `RequireRole` mostrava "acesso negado" para visitante não autenticado | **Corrigido.** Sem sessão → redireciona para `/login` (via `useEffect`, sem flash — `return null` enquanto isso); sessão com papel errado → `AccessDenied` (mantido). Teste novo prova o redirecionamento automático sem clique. |
+| 2 | major — `RolesGuard` fail-open para handlers futuros do `AdminController` sem `@Roles()` | **Corrigido.** `@Roles('admin')` movido para o nível de classe — `reflector.getAllAndOverride` já suporta override por método, então o default do controller passa a ser *deny*. 7/7 e2e (`admin-ping` + `auth-me`) continuam verdes. |
+| 3 | major — `/auth/me` e `/admin/ping` sem rate limit + fallback caro de `getClaims` = DoS não autenticado | **Corrigido.** `@Throttle({ limit: 30, ttl: 60000 })` (mesmo padrão generoso de `/auth/refresh`) aplicado aos dois endpoints. |
+| 4 | major — `role` sem validação de runtime na fronteira frontend/backend | **Corrigido.** `setSession` valida `role` contra a allowlist (`admin`/`adotante`), mesmo racional fail-closed já usado para `expires_in`. 5 novos testes (undefined, vazio, desconhecido, tipo errado, ambos os papéis válidos). |
+| 5 | major — `roleHomeRoute` tipada `string` mas podia devolver `undefined` em runtime | **Corrigido.** Fallback explícito `(role && ROLE_HOME_ROUTES[role]) ?? LOGIN_ROUTE`, cobrindo tanto ausência quanto valor desconhecido. Teste novo cobre um papel fora do mapa. |
+
+### Ressalva de escopo (por continuidade da sessão)
+
+Os 5 fixes acima foram verificados pelo próprio orquestrador (testes automatizados novos e dedicados a cada mecanismo, suíte completa, build e lint), sem uma segunda revisão adversarial independente via subagentes nesta rodada — mesma decisão já registrada na Rodada 2 do review de `pbi-002`. Recomenda-se uma Rodada 3 leve (só nos arquivos tocados) numa sessão futura, se o rigor total for necessário antes de produção.
+
+### Achados minor/suggestion remanescentes (não bloqueiam aprovação)
+
+Os 11 achados `minor` + 2 `suggestion` da Rodada 1 seguem em aberto, documentados e não bloqueantes: consistência de padrão em `GET /auth/me` (lógica de negócio no controller em vez de Use Case dedicado); validação de fronteira em `ProfileRoleLookup`/`claims.sub`; semântica de erro em `RolesGuard` quando mal configurado; error swallowing em `JwtAuthGuard`; menor privilégio (service role na guard de autenticação); `aud`/`iss` não validados explicitamente; payload RSC de `/admin`/`/cliente`; staleness de `role` entre renovações; drift de mensagem de erro não testado em `RegisterUseCase`; null-safety residual; `ProfileRoleLookup` duplicado entre módulos.
+
+### Cobertura dos critérios de aceite (atualizada)
+
+Todos os 6 critérios (AUTZ-01 a AUTZ-06) — **Verificado**, incluindo AUTZ-02 (que tinha Falhado parcialmente na rodada 1 pelo achado #1, agora corrigido) e AUTZ-06 (mecanismo geral correto, gap estrutural do achado #2 fechado).
+
 ---
 
-Próximo passo: volte ao `makuco-desenvolver` nas tasks T8/T9 (achados #1, #4, #5), T3/T6 (achado #2), T5/T6 (achado #3) e rode uma nova rodada de review depois.
+Próximo passo: PBI aprovada. Seguir para `makuco-documentation`.

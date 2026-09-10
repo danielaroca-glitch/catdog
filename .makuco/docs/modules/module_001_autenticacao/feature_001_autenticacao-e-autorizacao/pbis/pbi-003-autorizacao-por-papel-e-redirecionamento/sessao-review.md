@@ -1,12 +1,12 @@
 ---
-stepsCompleted: [1, 2, 3, 4]
+stepsCompleted: [1, 2, 3, 4, 5]
 modo: 'pbi'
-rodada: 1
+rodada: 2
 item_id: 'pbi-003'
 slug: 'autorizacao-por-papel-e-redirecionamento'
 pasta_pbi: '.makuco/docs/modules/module_001_autenticacao/feature_001_autenticacao-e-autorizacao/pbis/pbi-003-autorizacao-por-papel-e-redirecionamento'
 feature_folder: '.makuco/docs/modules/module_001_autenticacao/feature_001_autenticacao-e-autorizacao'
-escopo_diff: 'git diff 8e9826a..HEAD (HEAD=57541cd)'
+escopo_diff: 'rodada 1: git diff 8e9826a..57541cd | rodada 2: 4 arquivos de fix (admin.controller.ts, auth.controller.ts, require-role.tsx+test, session-context.tsx+test)'
 arquivos_alterados:
   - services/backend/src/admin/admin.controller.spec.ts
   - services/backend/src/admin/admin.controller.ts
@@ -47,9 +47,9 @@ tasks_revisadas: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9']
 passes_executados: [1, 2, 3, 4, 5, 6, 7]
 passes_skipped: []
 achados: { critical: 0, major: 5, minor: 11, suggestion: 2 }
-veredito: 'changes-requested'
+veredito: 'approved'
 artefato: '.makuco/docs/modules/module_001_autenticacao/feature_001_autenticacao-e-autorizacao/pbis/pbi-003-autorizacao-por-papel-e-redirecionamento/review.md'
-proxima_fase: 'fechamento'
+proxima_fase: ''
 ---
 
 ## Gaps de contexto

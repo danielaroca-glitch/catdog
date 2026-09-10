@@ -54,5 +54,15 @@ pbis:
     technical: pending
     spec: pending
     plan: pending
-    review: changes-requested
+    review: approved
     documentation: pending
+    tasks:
+      task-01: done
+      task-02: done
+      task-03: done
+      task-04: done
+      task-05: done
+      task-06: done
+      task-07: done
+      task-08: done
+      task-09: done
