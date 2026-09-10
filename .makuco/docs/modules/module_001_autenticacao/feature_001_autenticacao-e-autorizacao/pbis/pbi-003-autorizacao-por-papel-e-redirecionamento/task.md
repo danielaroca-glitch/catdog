@@ -127,8 +127,10 @@ T4 ──→ T7 ──→ T8 ──→ T9
 - Skill: `makuco-backend`
 
 **Done when**:
-- [ ] Login bem-sucedido retorna `{ access_token, refresh_token, expires_in, role }`
-- [ ] `role` reflete o papel atual em `profiles` no momento do login
+- [x] Login bem-sucedido retorna `{ access_token, refresh_token, expires_in, role }`
+- [x] `role` reflete o papel atual em `profiles` no momento do login
+
+**Status**: ✅ Concluída — commit `5e6e011`. Quality gate per-task: Gate 0/1/3/4 PASS.
 
 **Tests**: unit
 **Gate**: quick
@@ -149,9 +151,11 @@ T4 ──→ T7 ──→ T8 ──→ T9
 - Skill: `makuco-backend`
 
 **Done when**:
-- [ ] `GET /auth/me` com token válido retorna `{ id, email, role }` (200)
-- [ ] Sem token → 401 (E2E-06)
-- [ ] Token inválido/malformado → 401 (E2E-06)
+- [x] `GET /auth/me` com token válido retorna `{ id, email, role }` (200)
+- [x] Sem token → 401 (E2E-06)
+- [x] Token inválido/malformado → 401 (E2E-06)
+
+**Status**: ✅ Concluída — commit `3c9f482` (merge `ca31f05`). **Achou e corrigiu um bug cross-cutting em `JwtAuthGuard` (T2)**: o guard original verificava HS256 local com `SUPABASE_JWT_SECRET`, mas o projeto Supabase assina com chave assimétrica (ES256/JWKS) — todo token real era rejeitado. Corrigido trocando para `supabase.auth.getClaims()` (método oficial do SDK, cobre HS256/ES256 automaticamente via WebCrypto contra o JWKS cacheado). Esse mesmo bug foi encontrado de forma independente por T6 (que aplicou um fix próprio via `jose`+JWKS manual); o fix de T5 (`getClaims`) foi adotado no lugar por não exigir dependência nova — ver commit de merge `ca31f05`. Quality gate per-task: Gate 0/1/3/4 PASS.
 
 **Tests**: integration
 **Gate**: full
@@ -172,9 +176,11 @@ T4 ──→ T7 ──→ T8 ──→ T9
 - Skill: `makuco-backend`
 
 **Done when**:
-- [ ] `GET /admin/ping` com token de usuário `admin` → 200 `{ ok: true }` (E2E-05)
-- [ ] `GET /admin/ping` com token de usuário `adotante` → 403 (E2E-04)
-- [ ] `GET /admin/ping` sem token → 401 (E2E-06)
+- [x] `GET /admin/ping` com token de usuário `admin` → 200 `{ ok: true }` (E2E-05)
+- [x] `GET /admin/ping` com token de usuário `adotante` → 403 (E2E-04)
+- [x] `GET /admin/ping` sem token → 401 (E2E-06)
+
+**Status**: ✅ Concluída — commit `f4e9fd3`. Foi o primeiro endpoint real a exercitar `JwtAuthGuard` (T2) contra um token de verdade — achou o bug cross-cutting HS256×ES256 documentado em T5 acima. Quality gate per-task: Gate 0/1/3/4 PASS.
 
 **Tests**: e2e
 **Gate**: full
