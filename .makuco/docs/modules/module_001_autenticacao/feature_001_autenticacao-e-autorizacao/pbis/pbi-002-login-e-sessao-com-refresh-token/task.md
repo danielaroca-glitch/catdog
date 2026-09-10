@@ -342,3 +342,14 @@ Nenhuma task `[P]` depende de outra `[P]` na mesma fase (T1/T3/T5 independentes;
 | T9 | Frontend — módulo de sessão | unit | unit | ✅ OK |
 
 Nenhuma violação — `Tests: none` usado só em T5, que não é código (matriz não se aplica).
+
+## Pós-review — Rodada 1 (2026-09-08, NECESSITA CORREÇÕES)
+
+Ver `review.md` para o achado completo. Correções aplicadas nesta sessão, com testes e e2e real verificados:
+
+- **T2/T3 (achado #1, critical)**: `LoginUseCase`/`RefreshUseCase` reusavam o cliente Supabase singleton (service role) para `signInWithPassword`/`refreshSession`, vazando identidade de usuário entre requisições. Corrigido com um cliente efêmero por chamada (`SUPABASE_AUTH_CLIENT_FACTORY`). Uma primeira tentativa (`signOut({ scope: 'local' })`) se mostrou incorreta — revogava a sessão recém-emitida — e foi substituída. Commits `9686ffe`, `d3f5dfe`. 14/14 e2e reais OK.
+- **T9 (achados #2, #3, #4, #5, major)**: `useRefreshScheduler` nunca era montado na app real (renovação automática nunca rodava); mensagem de sessão expirada nunca era exibida; race condition no cleanup; delay 0/NaN sem piso. Todos corrigidos. Commits `9cfb1f1`, `dd001c3`, `66b6dfb`.
+- **T1 (achados #6, #7, minor)**: constante duplicada e validação de DTO reforçada. Commits `9686ffe`, `2583f06`.
+- Achados minor/suggestion restantes (log de eventos de auth, service role em fluxo de usuário final, isolamento de teste e2e, etc.) não bloqueiam aprovação — ficam registrados em `review.md` como não-bloqueantes.
+
+Pendente: rodada 2 de review para confirmar o fechamento dos achados críticos/major.
