@@ -2,7 +2,10 @@ import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CLIENT } from '../../supabase/supabase.provider';
 import { LoginDto } from '../dto/login.dto';
-import { EmailNotConfirmedException } from '../exceptions/email-not-confirmed.exception';
+import {
+  EMAIL_NOT_CONFIRMED_CODE,
+  EmailNotConfirmedException,
+} from '../exceptions/email-not-confirmed.exception';
 
 export interface AuthenticatedSession {
   access_token: string;
@@ -10,7 +13,6 @@ export interface AuthenticatedSession {
   expires_in: number;
 }
 
-const EMAIL_NOT_CONFIRMED_CODE = 'email_not_confirmed';
 const EMAIL_NOT_CONFIRMED_MESSAGE_PATTERN = /email.*not.*confirmed/i;
 const GENERIC_INVALID_CREDENTIALS_MESSAGE = 'E-mail ou senha incorretos.';
 
@@ -59,11 +61,22 @@ export class LoginUseCase {
       throw new UnauthorizedException(GENERIC_INVALID_CREDENTIALS_MESSAGE);
     }
 
-    return {
+    const session = {
       access_token: data.session.access_token,
       refresh_token: data.session.refresh_token,
       expires_in: data.session.expires_in,
     };
+
+    // SUPABASE_CLIENT é singleton (sem Scope.REQUEST) criado com a service
+    // role key. `persistSession: false` não impede o GoTrueClient de cachear
+    // a sessão em memória após signInWithPassword — o cliente passaria a
+    // usar o JWT deste usuário em chamadas REST subsequentes do MESMO
+    // singleton. `signOut({ scope: 'local' })` limpa esse cache local (volta
+    // a resolver para a service role key) SEM revogar a sessão do usuário no
+    // servidor Supabase; os tokens já extraídos acima continuam válidos.
+    await this.supabase.auth.signOut({ scope: 'local' });
+
+    return session;
   }
 
   private isEmailNotConfirmed(error: SupabaseErrorLike): boolean {

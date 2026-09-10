@@ -42,10 +42,18 @@ export class RefreshUseCase {
       throw new UnauthorizedException(GENERIC_INVALID_SESSION_MESSAGE);
     }
 
-    return {
+    const session = {
       access_token: data.session.access_token,
       refresh_token: data.session.refresh_token,
       expires_in: data.session.expires_in,
     };
+
+    // Ver comentário equivalente em LoginUseCase.execute: limpa o cache local
+    // de sessão do cliente Supabase singleton para não vazar o JWT deste
+    // usuário para chamadas REST subsequentes do mesmo cliente, sem revogar
+    // a sessão de verdade no servidor.
+    await this.supabase.auth.signOut({ scope: 'local' });
+
+    return session;
   }
 }

@@ -8,6 +8,7 @@ function buildSupabaseMock() {
   return {
     auth: {
       refreshSession: jest.fn(),
+      signOut: jest.fn().mockResolvedValue({ error: null }),
     },
   };
 }
@@ -57,6 +58,26 @@ describe('RefreshUseCase', () => {
       refresh_token: 'new-refresh-token',
       expires_in: 3600,
     });
+  });
+
+  it('limpa o cache local de sessão do cliente Supabase compartilhado após refresh bem-sucedido, sem revogar a sessão no servidor (achado #1)', async () => {
+    const supabase = buildSupabaseMock();
+    supabase.auth.refreshSession.mockResolvedValue({
+      data: {
+        session: {
+          access_token: 'new-access-token',
+          refresh_token: 'new-refresh-token',
+          expires_in: 3600,
+        },
+        user: { id: 'user-1' },
+      },
+      error: null,
+    });
+
+    const useCase = await buildUseCase(supabase);
+    await useCase.execute(validDto);
+
+    expect(supabase.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
   });
 
   it('lança UnauthorizedException com mensagem genérica quando o refresh token já foi rotacionado (LOGIN-06/RN-03)', async () => {
