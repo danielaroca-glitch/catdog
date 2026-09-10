@@ -1,6 +1,6 @@
 ---
-status: 'developing'
-stepsCompleted: [1, 2, 3, 4]
+status: 'done'
+stepsCompleted: [1, 2, 3, 4, 5]
 item_id: 'pbi-001'
 ado_id: ''
 titulo: 'Alta de animal'
@@ -14,6 +14,6 @@ ca_imutaveis: true
 spec_construido: true
 total_tasks: 6
 skills_necessarias: ['makuco-backend', 'makuco-frontend']
-proxima_fase: 'fechamento'
+proxima_fase: 'concluida'
 riscos: ['Migration SQL (T1) precisa ser aplicada manualmente pelo usuário no Supabase antes do e2e de T4 rodar contra o banco real']
 ---
