@@ -230,10 +230,12 @@ T7, T4 ──→ T9
 - Skill: `makuco-frontend`
 
 **Done when**:
-- [ ] Sucesso: `setSession(...)` chamado com o resultado, navega para `/` (placeholder — redirecionamento real por papel é da pbi-003, comentário `// TODO(pbi-003)` no código apontando isso)
-- [ ] E-mail não confirmado (403 + código específico): mostra alerta neutro com opção de reenvio, sem tratar como erro genérico
-- [ ] Credenciais inválidas (401): mostra erro genérico, sem indicar qual campo
-- [ ] Teste mocka `global.fetch` diretamente (não o módulo `auth.ts` inteiro) — lição da review rodada 1 da pbi-001 (achado #4/cobertura real)
+- [x] Sucesso: `setSession(...)` chamado com o resultado, navega para `/` (placeholder — redirecionamento real por papel é da pbi-003, comentário `// TODO(pbi-003)` no código apontando isso)
+- [x] E-mail não confirmado (403 + código específico): mostra alerta neutro com opção de reenvio, sem tratar como erro genérico
+- [x] Credenciais inválidas (401): mostra erro genérico, sem indicar qual campo
+- [x] Teste mocka `global.fetch` diretamente (não o módulo `auth.ts` inteiro) — lição da review rodada 1 da pbi-001 (achado #4/cobertura real)
+
+**Status**: ✅ Concluída — commit `095d0e0`. `loginUser`/`authenticatedFetch`/`ApiError` (com `code?`) em `auth.ts`, `extractErrorMessage` refatorado sobre `parseErrorBody` compartilhado sem mudar comportamento de `registerUser`. `LoginForm` conectado via `useSession`/`useRouter`. 12 testes novos (6 em `auth.test.ts`, 6 em `login-form.login-api.test.tsx`, novo arquivo espelhando `register-form.register-api.test.tsx`). Unit: 39/39 (na suíte do momento). Quality gate per-task: Gate 0/1/3/4 PASS.
 
 **Tests**: unit
 **Gate**: quick
@@ -254,10 +256,12 @@ T7, T4 ──→ T9
 - Skill: `makuco-frontend`
 
 **Done when**:
-- [ ] Agenda `setTimeout` para renovar antes de `expires_at` (com margem, ex. 60s antes)
-- [ ] Sucesso: contexto atualizado com novo par, próxima renovação reagendada
-- [ ] Falha (401 do backend): `clearSession()` chamado e usuário redirecionado a `/login` com a mensagem de sessão expirada
-- [ ] Timer limpo ao desmontar (sem leak entre logout e novo login)
+- [x] Agenda `setTimeout` para renovar antes de `expires_at` (com margem, ex. 60s antes)
+- [x] Sucesso: contexto atualizado com novo par, próxima renovação reagendada
+- [x] Falha (401 do backend): `clearSession()` chamado e usuário redirecionado a `/login?message=...` — **ressalva**: o texto vai como query string, mas nada em `login-form.tsx`/`app/login/page.tsx` lê esse parâmetro e exibe a mensagem na tela; hoje o usuário é redirecionado em silêncio, sem ver "Sua sessão expirou. Entre novamente." Isso não estava no "Where" de T9 (só `refresh-scheduler.ts`), então ficou de fora por escopo — mas deixa LOGIN-07 incompleto ponta a ponta. Ver nota abaixo do checklist.
+- [x] Timer limpo ao desmontar (sem leak entre logout e novo login)
+
+**Status**: ⚠️ Concluída com gap — commit `d16f006`. `useRefreshScheduler()` (hook headless), agenda 60s antes de `expires_at`, sucesso reagenda via `setSession`, falha limpa sessão e navega para `/login?message=...`. 4 testes novos (fake timers). Unit: 31/31 (no momento do commit). Quality gate per-task: Gate 0/1/3/4 PASS. **Gap aberto**: nenhuma task do PBI cobre exibir a mensagem de sessão expirada na tela de login — precisa de uma task nova (ex. T10) para `login-form.tsx`/`page.tsx` ler `searchParams.message` e renderizar um `Alert`, senão LOGIN-07 não é satisfeito de ponta a ponta apesar do checkbox acima.
 
 **Tests**: unit
 **Gate**: quick

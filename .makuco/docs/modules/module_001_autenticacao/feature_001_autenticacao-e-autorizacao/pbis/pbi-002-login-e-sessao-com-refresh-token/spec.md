@@ -74,13 +74,13 @@ Surgidos ao escrever esta spec — não presentes nas CA originais.
 
 | Requirement ID | Source | Phase | Status |
 | --- | --- | --- | --- |
-| LOGIN-01 | CA-01 (original) | Tasks | Implementing — backend Verified (E2E-01, T4); wiring do frontend pendente (T8) |
-| LOGIN-02 | CA-02 (original) | Tasks | Implementing — backend Verified (E2E-02, T4); alerta de reenvio no frontend pendente (T8) |
+| LOGIN-01 | CA-01 (original) | Tasks | Verified — backend E2E-01 (T4) + frontend wired e testado (T8) |
+| LOGIN-02 | CA-02 (original) | Tasks | Verified — backend E2E-02 (T4) + alerta de reenvio no frontend (T8) |
 | LOGIN-03 | CA-03 (original) | Tasks | Verified — E2E-05 (T4, corrigido nesta sessão) |
-| LOGIN-04 | CA-04 (original) | Tasks | Implementing — backend Verified (E2E-03, T4); superfície no frontend pendente (T8) |
+| LOGIN-04 | CA-04 (original) | Tasks | Verified — backend E2E-03 (T4) + superfície no frontend (T8) |
 | LOGIN-05 | Edge case | Tasks | Verified — DTO (T1, unit) + validação client-side (T6, unit), per "Fora do e2e" acima |
-| LOGIN-06 | Edge case | Tasks | Implementing — backend Verified (E2E-04, T4); scheduler de renovação no frontend pendente (T9) |
-| LOGIN-07 | Edge case | Tasks | Pending — depende de T9 (ainda não iniciada); T7 entrega só o armazenamento de sessão que T9 vai consumir |
+| LOGIN-06 | Edge case | Tasks | Verified — backend E2E-04 (T4) + scheduler de renovação no frontend (T9) |
+| LOGIN-07 | Edge case | Tasks | **Implementing, com gap aberto** — T9 limpa sessão e redireciona a `/login?message=...`, mas nada lê esse parâmetro e exibe a mensagem na tela; falta uma task nova para fechar ponta a ponta (ver `task.md`, nota em T9, e `.makuco/STATE.md`) |
 | LOGIN-08 | Edge case | Tasks | Verified — E2E-06 (T4) |
 
 **ID format:** `LOGIN-NN`
