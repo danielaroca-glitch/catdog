@@ -1,6 +1,7 @@
 "use client"
 
-import type { ReactNode } from "react"
+import { useEffect, type ReactNode } from "react"
+import { useRouter } from "next/navigation"
 
 import type { UserRole } from "@/lib/api/auth"
 import { useSession } from "@/lib/auth/session-context"
@@ -19,8 +20,13 @@ const ROLE_HOME_ROUTES: Readonly<Record<UserRole, string>> = {
   adotante: "/cliente",
 }
 
+// Achado #5 (major, review rodada 1): o truthy-check anterior (`role ? ... :
+// LOGIN_ROUTE`) só cobria `role` ausente — uma string truthy fora do mapa
+// (ex.: um 3º papel futuro, ou um drift de contrato do achado #4) devolvia
+// `undefined` em runtime apesar da assinatura dizer `string`. O fallback
+// `?? LOGIN_ROUTE` cobre os dois casos: ausência E valor desconhecido.
 export function roleHomeRoute(role: UserRole | undefined): string {
-  return role ? ROLE_HOME_ROUTES[role] : LOGIN_ROUTE
+  return (role && ROLE_HOME_ROUTES[role]) ?? LOGIN_ROUTE
 }
 
 export interface RequireRoleProps {
@@ -37,12 +43,33 @@ export interface RequireRoleProps {
  * (esconder o conteúdo, mostrar `AccessDenied`), mas **não é** uma fronteira
  * de segurança: qualquer endpoint real de admin precisa do `RolesGuard` no
  * backend (AUTZ-03), que é a fronteira de verdade.
+ *
+ * [DECISÃO — achado #1 major, review rodada 1] "Sem sessão" e "sessão com
+ * papel errado" são desfechos DIFERENTES, não o mesmo: antes,
+ * `session?.role !== role` colapsava os dois em `AccessDenied` — todo
+ * visitante não autenticado que abrisse `/admin`/`/cliente` (inclusive por
+ * reload, já que a sessão é só em memória) via a mensagem "Você não tem
+ * permissão para acessar esta página", que é factualmente errada para quem
+ * simplesmente não fez login. Agora: sem sessão → redireciona para
+ * `/login` (não renderiza nada, evitando qualquer flash); sessão com papel
+ * errado → `AccessDenied` (comportamento original, correto para esse caso).
  */
 export function RequireRole({ role, children }: RequireRoleProps) {
   const { session } = useSession()
+  const router = useRouter()
 
-  if (session?.role !== role) {
-    return <AccessDenied homeRoute={roleHomeRoute(session?.role)} />
+  useEffect(() => {
+    if (!session) {
+      router.push(LOGIN_ROUTE)
+    }
+  }, [session, router])
+
+  if (!session) {
+    return null
+  }
+
+  if (session.role !== role) {
+    return <AccessDenied homeRoute={roleHomeRoute(session.role)} />
   }
 
   return <>{children}</>

@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
+import type { UserRole } from "@/lib/api/auth"
+
 import { RequireRole, roleHomeRoute } from "./require-role"
 
 const pushMock = jest.fn()
@@ -52,7 +54,10 @@ describe("RequireRole (T8, AUTZ-02)", () => {
     ).not.toBeInTheDocument()
   })
 
-  it("renders AccessDenied, never children, when there is no session at all", () => {
+  // Achado #1 (major, review rodada 1): "sem sessão" e "papel errado" são
+  // desfechos diferentes — antes os dois caíam em AccessDenied, mostrando
+  // "você não tem permissão" para quem simplesmente não fez login.
+  it("redirects to /login (renders neither AccessDenied nor children) when there is no session at all", () => {
     sessionMock = null
     render(
       <RequireRole role="admin">
@@ -60,7 +65,10 @@ describe("RequireRole (T8, AUTZ-02)", () => {
       </RequireRole>
     )
 
-    expect(screen.getByTestId("access-denied-heading")).toBeInTheDocument()
+    expect(pushMock).toHaveBeenCalledWith("/login")
+    expect(
+      screen.queryByTestId("access-denied-heading")
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByText("conteúdo administrativo")
     ).not.toBeInTheDocument()
@@ -99,22 +107,6 @@ describe("RequireRole (T8, AUTZ-02)", () => {
 
     expect(pushMock).toHaveBeenCalledWith("/admin")
   })
-
-  it("sends a visitor without any session to /login", async () => {
-    sessionMock = null
-    const user = userEvent.setup()
-    render(
-      <RequireRole role="admin">
-        <p>conteúdo administrativo</p>
-      </RequireRole>
-    )
-
-    await user.click(
-      screen.getByRole("button", { name: "Voltar para minha área" })
-    )
-
-    expect(pushMock).toHaveBeenCalledWith("/login")
-  })
 })
 
 describe("roleHomeRoute", () => {
@@ -122,5 +114,12 @@ describe("roleHomeRoute", () => {
     expect(roleHomeRoute("admin")).toBe("/admin")
     expect(roleHomeRoute("adotante")).toBe("/cliente")
     expect(roleHomeRoute(undefined)).toBe("/login")
+  })
+
+  // Achado #5 (major, review rodada 1): um valor truthy fora do mapa
+  // (3º papel futuro, ou drift de contrato) não pode devolver `undefined`
+  // em runtime apesar da assinatura de tipo dizer `string`.
+  it("falls back to /login for a truthy role value outside the known map", () => {
+    expect(roleHomeRoute("moderador" as UserRole)).toBe("/login")
   })
 })

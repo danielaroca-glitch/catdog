@@ -1,6 +1,8 @@
 import { act, render, renderHook, screen } from "@testing-library/react"
 import type { ReactNode } from "react"
 
+import type { UserRole } from "@/lib/api/auth"
+
 import { SessionProvider, useSession } from "./session-context"
 
 function wrapper({ children }: { readonly children: ReactNode }) {
@@ -229,6 +231,50 @@ describe("SessionProvider / useSession", () => {
       })
 
       jest.restoreAllMocks()
+    })
+  })
+
+  // Achado #4 (major, review rodada 1 do pbi-003): `role` chegava sem
+  // nenhuma validação de runtime, ao contrário de `expires_in` (mesmo
+  // motivo: drift de contrato entre backend/frontend, já materializado uma
+  // vez nesta sessão). Sem isso, `session.role` vira `undefined`/lixo com
+  // tokens válidos, e `RequireRole` nega todas as rotas protegidas.
+  describe("role validation", () => {
+    it.each([
+      ["undefined", undefined],
+      ["vazio", ""],
+      ["desconhecido", "moderador"],
+      ["número", 1],
+    ])("throws when role is %s (%p)", (_label, role) => {
+      const { result } = renderHook(() => useSession(), { wrapper })
+
+      expect(() => {
+        act(() => {
+          result.current.setSession({
+            access_token: "access-token-1",
+            refresh_token: "refresh-token-1",
+            expires_in: 3600,
+            role: role as unknown as UserRole,
+          })
+        })
+      }).toThrow()
+
+      expect(result.current.session).toBeNull()
+    })
+
+    it("accepts both known roles", () => {
+      const { result } = renderHook(() => useSession(), { wrapper })
+
+      act(() => {
+        result.current.setSession({
+          access_token: "access-token-1",
+          refresh_token: "refresh-token-1",
+          expires_in: 3600,
+          role: "admin",
+        })
+      })
+
+      expect(result.current.session?.role).toBe("admin")
     })
   })
 })

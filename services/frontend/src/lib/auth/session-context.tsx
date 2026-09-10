@@ -67,6 +67,20 @@ function isValidExpiresIn(expiresInSeconds: number): boolean {
   return Number.isFinite(expiresInSeconds) && expiresInSeconds > 0
 }
 
+const VALID_ROLES: ReadonlySet<UserRole> = new Set(["admin", "adotante"])
+
+// Achado #4 (major, review rodada 1 do pbi-003): `role` chegava sem NENHUMA
+// validação de runtime — ao contrário de `expires_in` (mesmo motivo: backend
+// e frontend são deploys independentes, sem pacote de contratos
+// compartilhado, e um drift já aconteceu de verdade nesta sessão, quando o
+// login da pbi-002 não incluía `role`). Sem isso, `session.role` vira
+// `undefined`/lixo com tokens perfeitamente válidos, e `RequireRole` nega
+// TODAS as rotas protegidas sem caminho de recuperação a não ser um novo
+// login. Mesmo racional fail-closed já aplicado a `expires_in`.
+function isValidRole(role: unknown): role is UserRole {
+  return typeof role === "string" && VALID_ROLES.has(role as UserRole)
+}
+
 export interface SessionProviderProps {
   readonly children: ReactNode
 }
@@ -87,6 +101,12 @@ export function SessionProvider({ children }: SessionProviderProps) {
     if (!isValidExpiresIn(input.expires_in)) {
       throw new Error(
         "setSession: expires_in inválido — deve ser um número finito maior que zero."
+      )
+    }
+
+    if (!isValidRole(input.role)) {
+      throw new Error(
+        "setSession: role inválido — deve ser 'admin' ou 'adotante'."
       )
     }
 
