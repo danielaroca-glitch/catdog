@@ -9,6 +9,8 @@ import {
   type ReactNode,
 } from "react"
 
+import type { UserRole } from "@/lib/api/auth"
+
 /**
  * Contexto de sessão (T7 — suporte a LOGIN-01, LOGIN-06, LOGIN-07).
  *
@@ -19,23 +21,30 @@ import {
  * "lembrar sessão" entre recarregamentos.
  *
  * O shape de entrada de `setSession` (`access_token`, `refresh_token`,
- * `expires_in`) espelha 1:1 o retorno de `POST /auth/login` e
+ * `expires_in`, `role`) espelha 1:1 o retorno de `POST /auth/login` e
  * `POST /auth/refresh` do backend (`AuthenticatedSession`/`RefreshedSession`
  * em `services/backend/src/auth/use-cases/`), para que `LoginForm` (T8) e o
  * futuro `refresh-scheduler` (T9) repassem a resposta da API diretamente,
  * sem remapeamento de campos.
+ *
+ * `role` (pbi-003, AUTZ-01) é guardado no mesmo estado em memória dos
+ * tokens — nunca `localStorage`/`sessionStorage` — para que o
+ * redirecionamento pós-login por papel (T9) e o guard de rota `RequireRole`
+ * (T8) o leiam via `useSession()` sem uma chamada adicional.
  */
 
 export interface Session {
   readonly access_token: string
   readonly refresh_token: string
   readonly expires_at: number
+  readonly role: UserRole
 }
 
 export interface SetSessionInput {
   readonly access_token: string
   readonly refresh_token: string
   readonly expires_in: number
+  readonly role: UserRole
 }
 
 export interface SessionContextValue {
@@ -85,6 +94,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       access_token: input.access_token,
       refresh_token: input.refresh_token,
       expires_at: expiresAtFromNow(input.expires_in),
+      role: input.role,
     })
   }, [])
 

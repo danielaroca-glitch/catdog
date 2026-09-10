@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 
-import { useSession, type Session, type SetSessionInput } from "./session-context"
+import { useSession, type Session } from "./session-context"
 
 /**
  * Renovação automática de sessão (T9 — LOGIN-06, LOGIN-07).
@@ -63,6 +63,9 @@ export const SESSION_EXPIRED_MESSAGE = "Sua sessão expirou. Entre novamente."
 // fora dela.
 export const SESSION_EXPIRED_REASON = "session_expired"
 
+// `POST /auth/refresh` não devolve `role` (só troca o par de tokens) — o
+// papel do usuário não muda numa renovação, então é preservado da sessão
+// atual em `renewSession` em vez de ser lido de novo aqui (pbi-003, T7).
 interface RefreshedSessionResponse {
   readonly access_token: string
   readonly refresh_token: string
@@ -86,7 +89,7 @@ function isRefreshedSessionResponse(
 
 async function parseRefreshedSession(
   response: Response
-): Promise<SetSessionInput> {
+): Promise<RefreshedSessionResponse> {
   const body: unknown = await response.json().catch(() => null)
 
   if (!response.ok || !isRefreshedSessionResponse(body)) {
@@ -98,7 +101,7 @@ async function parseRefreshedSession(
 
 async function requestSessionRefresh(
   refreshToken: string
-): Promise<SetSessionInput> {
+): Promise<RefreshedSessionResponse> {
   let response: Response
 
   try {
@@ -182,7 +185,9 @@ export function useRefreshScheduler(): void {
         if (cancelled) {
           return
         }
-        setSession(refreshed)
+        // `role` não vem do refresh (ver nota em `RefreshedSessionResponse`)
+        // — preservado da sessão vigente antes desta renovação.
+        setSession({ ...refreshed, role: currentSession.role })
       } catch (error) {
         if (cancelled) {
           return

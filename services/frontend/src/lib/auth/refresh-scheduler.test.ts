@@ -83,6 +83,7 @@ describe("useRefreshScheduler", () => {
         access_token: "access-1",
         refresh_token: "refresh-1",
         expires_in: ONE_HOUR_IN_SECONDS,
+        role: "adotante",
       })
     })
 
@@ -121,6 +122,7 @@ describe("useRefreshScheduler", () => {
         access_token: "access-1",
         refresh_token: "refresh-1",
         expires_in: ONE_HOUR_IN_SECONDS,
+        role: "adotante",
       })
     })
 
@@ -131,6 +133,9 @@ describe("useRefreshScheduler", () => {
     expect(result.current.session).toMatchObject({
       access_token: "access-2",
       refresh_token: "refresh-2",
+      // pbi-003 (T7): `POST /auth/refresh` não devolve `role` — precisa
+      // continuar vindo da sessão anterior, não virar `undefined`.
+      role: "adotante",
     })
 
     // Reagendamento: um 2º ciclo completo deve disparar um 2º refresh.
@@ -166,6 +171,7 @@ describe("useRefreshScheduler", () => {
         access_token: "access-1",
         refresh_token: "refresh-1",
         expires_in: ONE_HOUR_IN_SECONDS,
+        role: "adotante",
       })
     })
 
@@ -202,6 +208,7 @@ describe("useRefreshScheduler", () => {
         access_token: "access-1",
         refresh_token: "refresh-1",
         expires_in: ONE_HOUR_IN_SECONDS,
+        role: "adotante",
       })
     })
 
@@ -247,6 +254,7 @@ describe("useRefreshScheduler", () => {
         access_token: "access-1",
         refresh_token: "refresh-1",
         expires_in: ONE_HOUR_IN_SECONDS,
+        role: "adotante",
       })
     })
 
@@ -275,6 +283,7 @@ describe("useRefreshScheduler", () => {
         access_token: "access-1",
         refresh_token: "refresh-1",
         expires_in: ONE_HOUR_IN_SECONDS,
+        role: "adotante",
       })
     })
 
@@ -305,6 +314,7 @@ describe("useRefreshScheduler", () => {
         access_token: "access-1",
         refresh_token: "refresh-1",
         expires_in: ONE_HOUR_IN_SECONDS,
+        role: "adotante",
       })
     })
 
@@ -339,6 +349,7 @@ describe("useRefreshScheduler", () => {
         access_token: "access-1",
         refresh_token: "refresh-1",
         expires_in: ONE_HOUR_IN_SECONDS,
+        role: "adotante",
       })
     })
 
@@ -355,6 +366,7 @@ describe("useRefreshScheduler", () => {
         access_token: "access-B",
         refresh_token: "refresh-B",
         expires_in: ONE_HOUR_IN_SECONDS,
+        role: "adotante",
       })
     })
 
@@ -393,6 +405,7 @@ describe("useRefreshScheduler", () => {
         access_token: "access-1",
         refresh_token: "refresh-1",
         expires_in: ONE_HOUR_IN_SECONDS,
+        role: "adotante",
       })
     })
 
@@ -435,6 +448,7 @@ describe("millisecondsUntilRefresh (piso mínimo contra loop de refresh)", () =>
       access_token: "a",
       refresh_token: "r",
       expires_at: NOW + ONE_HOUR_IN_MS,
+      role: "adotante",
     }
 
     expect(millisecondsUntilRefresh(session)).toBe(
@@ -447,6 +461,7 @@ describe("millisecondsUntilRefresh (piso mínimo contra loop de refresh)", () =>
       access_token: "a",
       refresh_token: "r",
       expires_at: NOW,
+      role: "adotante",
     }
 
     expect(millisecondsUntilRefresh(session)).toBe(MIN_REFRESH_DELAY_MS)
@@ -457,6 +472,7 @@ describe("millisecondsUntilRefresh (piso mínimo contra loop de refresh)", () =>
       access_token: "a",
       refresh_token: "r",
       expires_at: NOW - 100_000,
+      role: "adotante",
     }
 
     expect(millisecondsUntilRefresh(session)).toBe(MIN_REFRESH_DELAY_MS)
@@ -467,6 +483,7 @@ describe("millisecondsUntilRefresh (piso mínimo contra loop de refresh)", () =>
       access_token: "a",
       refresh_token: "r",
       expires_at: NaN,
+      role: "adotante",
     }
 
     expect(millisecondsUntilRefresh(session)).toBe(MIN_REFRESH_DELAY_MS)

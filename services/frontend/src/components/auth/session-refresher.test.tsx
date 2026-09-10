@@ -44,6 +44,7 @@ function SessionAlreadyActive({ children }: { readonly children: ReactNode }) {
       access_token: "access-1",
       refresh_token: "refresh-1",
       expires_in: ONE_HOUR_IN_SECONDS,
+      role: "adotante",
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

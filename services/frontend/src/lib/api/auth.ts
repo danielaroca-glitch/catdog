@@ -112,11 +112,14 @@ export interface LoginPayload {
  * (`services/backend/src/auth/use-cases/login.use-case.ts`) — mesmo shape
  * de entrada esperado por `SessionContext.setSession` (T7), então o
  * resultado de `loginUser` pode ser repassado direto, sem remapeamento.
+ * `role` (pbi-003, T4 do backend) é usado pelo redirecionamento pós-login
+ * por papel (T9).
  */
 export interface AuthenticatedSession {
   access_token: string
   refresh_token: string
   expires_in: number
+  role: UserRole
 }
 
 /**

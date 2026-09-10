@@ -14,7 +14,7 @@ describe("SessionProvider / useSession", () => {
     expect(result.current.session).toBeNull()
   })
 
-  it("stores access_token, refresh_token and a computed expires_at when setSession is called", () => {
+  it("stores access_token, refresh_token, role and a computed expires_at when setSession is called", () => {
     jest.spyOn(Date, "now").mockReturnValue(1_000_000)
 
     const { result } = renderHook(() => useSession(), { wrapper })
@@ -24,6 +24,7 @@ describe("SessionProvider / useSession", () => {
         access_token: "access-token-1",
         refresh_token: "refresh-token-1",
         expires_in: 3600,
+        role: "adotante",
       })
     })
 
@@ -31,12 +32,16 @@ describe("SessionProvider / useSession", () => {
       access_token: "access-token-1",
       refresh_token: "refresh-token-1",
       expires_at: 1_000_000 + 3600 * 1000,
+      role: "adotante",
     })
 
     jest.restoreAllMocks()
   })
 
-  it("replaces the previous session when setSession is called again (e.g. after a refresh)", () => {
+  // T7 (pbi-003, AUTZ-01): session.role precisa estar acessível via
+  // useSession() para o redirecionamento pós-login por papel (T9) e para
+  // RequireRole (T8) decidirem sem uma leitura adicional.
+  it("exposes session.role for both admin and adotante", () => {
     const { result } = renderHook(() => useSession(), { wrapper })
 
     act(() => {
@@ -44,6 +49,22 @@ describe("SessionProvider / useSession", () => {
         access_token: "access-token-1",
         refresh_token: "refresh-token-1",
         expires_in: 3600,
+        role: "admin",
+      })
+    })
+
+    expect(result.current.session?.role).toBe("admin")
+  })
+
+  it("replaces the previous session (including role) when setSession is called again (e.g. after a refresh)", () => {
+    const { result } = renderHook(() => useSession(), { wrapper })
+
+    act(() => {
+      result.current.setSession({
+        access_token: "access-token-1",
+        refresh_token: "refresh-token-1",
+        expires_in: 3600,
+        role: "adotante",
       })
     })
     act(() => {
@@ -51,12 +72,14 @@ describe("SessionProvider / useSession", () => {
         access_token: "access-token-2",
         refresh_token: "refresh-token-2",
         expires_in: 1800,
+        role: "admin",
       })
     })
 
     expect(result.current.session).toMatchObject({
       access_token: "access-token-2",
       refresh_token: "refresh-token-2",
+      role: "admin",
     })
   })
 
@@ -68,6 +91,7 @@ describe("SessionProvider / useSession", () => {
         access_token: "access-token-1",
         refresh_token: "refresh-token-1",
         expires_in: 3600,
+        role: "adotante",
       })
     })
     act(() => {
@@ -105,6 +129,7 @@ describe("SessionProvider / useSession", () => {
         access_token: "access-token-1",
         refresh_token: "refresh-token-1",
         expires_in: 3600,
+        role: "adotante",
       })
     })
     act(() => {
@@ -133,6 +158,7 @@ describe("SessionProvider / useSession", () => {
                 access_token: "access-token-1",
                 refresh_token: "refresh-token-1",
                 expires_in: 3600,
+                role: "adotante",
               })
             }
           >
@@ -174,6 +200,7 @@ describe("SessionProvider / useSession", () => {
             access_token: "access-token-1",
             refresh_token: "refresh-token-1",
             expires_in: expiresIn,
+            role: "adotante",
           })
         })
       }).toThrow()
@@ -190,6 +217,7 @@ describe("SessionProvider / useSession", () => {
           access_token: "access-token-1",
           refresh_token: "refresh-token-1",
           expires_in: 1,
+          role: "adotante",
         })
       })
 
@@ -197,6 +225,7 @@ describe("SessionProvider / useSession", () => {
         access_token: "access-token-1",
         refresh_token: "refresh-token-1",
         expires_at: 1_000_000 + 1000,
+        role: "adotante",
       })
 
       jest.restoreAllMocks()
