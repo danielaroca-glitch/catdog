@@ -157,6 +157,8 @@ T4 → T5 → T6
 
 **Commit**: `feat(frontend): adiciona cliente createAnimal`
 
+**Status**: ✅ Done — 3/3 testes unit passando. Commit: `d403f37`. Adicionado `GET /species` (fora do plano original) + cliente `listSpecies` para o formulário de T6 poder listar espécies — ver nota em T6.
+
 ---
 
 ### T6: `AnimalForm` + página `/admin/animais/novo`
@@ -182,6 +184,8 @@ T4 → T5 → T6
 **Gate**: quick
 
 **Commit**: `feat(frontend): adiciona formulário de cadastro de animal`
+
+**Status**: ✅ Done — 2/2 testes unit passando. Gap identificado durante a implementação e confirmado com o usuário: o plano original não previa como o formulário saberia quais espécies existem — resolvido com um `GET /species` novo (backend) + `listSpecies` (frontend), fora do escopo original das 6 tasks. Seletor implementado com `<select>` nativo, não Radix `Select` (`components/ui/select.tsx`, gerado via shadcn e depois removido) — trava em jsdom mesmo com polyfills de `hasPointerCapture`/`scrollIntoView`. Commit: `c5cfb19`.
 
 ---
 
