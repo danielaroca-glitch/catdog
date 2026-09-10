@@ -46,7 +46,7 @@ export interface RequireRoleProps {
  *
  * [DECISÃO — achado #1 major, review rodada 1] "Sem sessão" e "sessão com
  * papel errado" são desfechos DIFERENTES, não o mesmo: antes,
- * `session?.role !== role` colapsava os dois em `AccessDenied` — todo
+ * `session?.role !== role` colapsava os dois em `AccessDenied` — qualquer
  * visitante não autenticado que abrisse `/admin`/`/cliente` (inclusive por
  * reload, já que a sessão é só em memória) via a mensagem "Você não tem
  * permissão para acessar esta página", que é factualmente errada para quem

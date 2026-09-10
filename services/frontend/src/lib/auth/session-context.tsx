@@ -86,9 +86,9 @@ export interface SessionProviderProps {
 }
 
 export function SessionProvider({ children }: SessionProviderProps) {
-  const [session, setSessionState] = useState<Session | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
 
-  const setSession = useCallback((input: SetSessionInput) => {
+  const setValidatedSession = useCallback((input: SetSessionInput) => {
     // Achado #5 (review pbi-002): `expires_in` chega direto da resposta da
     // API (login/refresh) sem validação de runtime. Um valor <= 0 ou NaN
     // vira `expires_at` no passado (ou inválido), o que faz
@@ -110,7 +110,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       )
     }
 
-    setSessionState({
+    setSession({
       access_token: input.access_token,
       refresh_token: input.refresh_token,
       expires_at: expiresAtFromNow(input.expires_in),
@@ -119,12 +119,12 @@ export function SessionProvider({ children }: SessionProviderProps) {
   }, [])
 
   const clearSession = useCallback(() => {
-    setSessionState(null)
+    setSession(null)
   }, [])
 
   const value = useMemo<SessionContextValue>(
-    () => ({ session, setSession, clearSession }),
-    [session, setSession, clearSession]
+    () => ({ session, setSession: setValidatedSession, clearSession }),
+    [session, setValidatedSession, clearSession]
   )
 
   return (

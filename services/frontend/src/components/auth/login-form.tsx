@@ -51,6 +51,14 @@ const loginFormSchema = z.object({
 
 export type LoginFormValues = z.infer<typeof loginFormSchema>
 
+function isEmailNotConfirmedError(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    error.status === HTTP_STATUS_FORBIDDEN &&
+    error.code === EMAIL_NOT_CONFIRMED_CODE
+  )
+}
+
 export interface LoginFormProps {
   /**
    * Callback opcional chamado com os dados validados no submit, no lugar da
@@ -133,14 +141,6 @@ export function LoginForm({ onSubmit, sessionMessage }: LoginFormProps) {
         return current - 1
       })
     }, 1000)
-  }
-
-  function isEmailNotConfirmedError(error: unknown): boolean {
-    return (
-      error instanceof ApiError &&
-      error.status === HTTP_STATUS_FORBIDDEN &&
-      error.code === EMAIL_NOT_CONFIRMED_CODE
-    )
   }
 
   function handleLoginError(error: unknown) {
