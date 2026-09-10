@@ -17,7 +17,7 @@ jest.mock("next/navigation", () => ({
 import { SessionProvider, useSession, type Session } from "./session-context"
 import {
   MIN_REFRESH_DELAY_MS,
-  SESSION_EXPIRED_MESSAGE,
+  SESSION_EXPIRED_REASON,
   millisecondsUntilRefresh,
   useRefreshScheduler,
 } from "./refresh-scheduler"
@@ -180,9 +180,120 @@ describe("useRefreshScheduler", () => {
     })
 
     expect(result.current.session).toBeNull()
-    expect(pushMock).toHaveBeenCalledWith(
-      `/login?message=${encodeURIComponent(SESSION_EXPIRED_MESSAGE)}`
-    )
+    expect(pushMock).toHaveBeenCalledWith(`/login?reason=${SESSION_EXPIRED_REASON}`)
+  })
+
+  it("on a network error (fetch rejects), retries instead of logging out immediately — a blip does not cost the session (achado #1, review rodada 2)", async () => {
+    const fetchMock = globalThis.fetch as jest.Mock
+    fetchMock
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          access_token: "access-2",
+          refresh_token: "refresh-2",
+          expires_in: ONE_HOUR_IN_SECONDS,
+        })
+      )
+
+    const { result } = renderHook(() => useTestHarness(), { wrapper })
+
+    act(() => {
+      result.current.setSession({
+        access_token: "access-1",
+        refresh_token: "refresh-1",
+        expires_in: ONE_HOUR_IN_SECONDS,
+      })
+    })
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(ONE_HOUR_IN_MS - REFRESH_MARGIN_MS)
+    })
+
+    // 1ª tentativa falhou na rede — sessão continua de pé, sem logout.
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(result.current.session).not.toBeNull()
+    expect(pushMock).not.toHaveBeenCalled()
+
+    // Retry agendado (5s) — 2ª tentativa é bem-sucedida.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(5_000)
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(result.current.session).toMatchObject({ access_token: "access-2" })
+    expect(pushMock).not.toHaveBeenCalled()
+  })
+
+  it("on a 5xx server error, retries the same way as a network error (not treated as a real auth rejection)", async () => {
+    const fetchMock = globalThis.fetch as jest.Mock
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: () => Promise.resolve({ message: "Service Unavailable" }),
+      } as Response)
+      .mockResolvedValueOnce(
+        jsonResponse({
+          access_token: "access-2",
+          refresh_token: "refresh-2",
+          expires_in: ONE_HOUR_IN_SECONDS,
+        })
+      )
+
+    const { result } = renderHook(() => useTestHarness(), { wrapper })
+
+    act(() => {
+      result.current.setSession({
+        access_token: "access-1",
+        refresh_token: "refresh-1",
+        expires_in: ONE_HOUR_IN_SECONDS,
+      })
+    })
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(ONE_HOUR_IN_MS - REFRESH_MARGIN_MS)
+    })
+
+    expect(result.current.session).not.toBeNull()
+    expect(pushMock).not.toHaveBeenCalled()
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(5_000)
+    })
+
+    expect(result.current.session).toMatchObject({ access_token: "access-2" })
+  })
+
+  it("gives up after repeated transient failures and logs out (does not retry forever)", async () => {
+    const fetchMock = globalThis.fetch as jest.Mock
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"))
+
+    const { result } = renderHook(() => useTestHarness(), { wrapper })
+
+    act(() => {
+      result.current.setSession({
+        access_token: "access-1",
+        refresh_token: "refresh-1",
+        expires_in: ONE_HOUR_IN_SECONDS,
+      })
+    })
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(ONE_HOUR_IN_MS - REFRESH_MARGIN_MS)
+    })
+
+    // 1 tentativa inicial + 5 retries (MAX_TRANSIENT_RETRIES) = 6 chamadas,
+    // cada uma separada por 5s, antes de desistir.
+    for (let retry = 0; retry < 5; retry += 1) {
+      expect(result.current.session).not.toBeNull()
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(5_000)
+      })
+    }
+
+    expect(fetchMock).toHaveBeenCalledTimes(6)
+    expect(result.current.session).toBeNull()
+    expect(pushMock).toHaveBeenCalledWith(`/login?reason=${SESSION_EXPIRED_REASON}`)
   })
 
   it("clears the scheduled timer on unmount, so no stray refresh leaks between a logout and a new login", () => {

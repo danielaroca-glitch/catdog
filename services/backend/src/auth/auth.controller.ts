@@ -57,9 +57,9 @@ export class AuthController {
   /**
    * Rate limit dedicado a este endpoint (LOGIN-08): mesmo limite de
    * `/auth/register` (5/min por IP), para dificultar força bruta de senha.
-   * `/auth/refresh` NÃO recebe o mesmo tratamento (ver abaixo) — renovação
-   * automática de sessão é um fluxo legítimo e não deve esbarrar em limite
-   * pensado para tentativas de login.
+   * `/auth/refresh` (abaixo) tem um limite bem mais generoso (30/min) — a
+   * renovação automática de sessão é um fluxo legítimo de baixa frequência,
+   * mas não deve ficar totalmente sem controle (achado #1, review rodada 2).
    */
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
@@ -68,6 +68,20 @@ export class AuthController {
     return this.loginUseCase.execute(dto);
   }
 
+  /**
+   * Rate limit generoso (achado #1, major, review rodada 2 do pbi-002): a
+   * decisão original era não limitar `/auth/refresh` para não esbarrar na
+   * renovação automática legítima (~1 requisição a cada ~55min por sessão,
+   * ver `REFRESH_MARGIN_MS`/`refresh-scheduler.ts` no frontend). Mas o fix
+   * do achado #1 crítico (cliente Supabase efêmero por chamada, em vez do
+   * singleton) tornou cada requisição não autenticada mais cara (aloca um
+   * `SupabaseClient` inteiro antes de validar o `refresh_token`), e o
+   * endpoint segue sem nenhum controle. 30/min por IP é ordens de magnitude
+   * acima do uso legítimo, então não bloqueia renovação real, só limita
+   * abuso.
+   */
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @Post('refresh')
   async refresh(@Body() dto: RefreshDto): Promise<RefreshedSession> {
     return this.refreshUseCase.execute(dto);

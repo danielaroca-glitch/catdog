@@ -25,6 +25,20 @@ import { useSession, type Session, type SetSessionInput } from "./session-contex
  */
 
 const REFRESH_MARGIN_MS = 60_000
+// Achado #1 (major, review rodada 2): antes, QUALQUER falha (rede fora do
+// ar, backend reiniciando, 5xx) caía no mesmo catch que um 401 genuíno
+// (RN-03, refresh token reutilizado/inválido) — deslogava o usuário com uma
+// mensagem falsa de "sessão expirou" mesmo quando a sessão continuava
+// perfeitamente válida no Supabase, sem nenhuma tentativa nova. Erros
+// TRANSIENTES (fetch não completou, ou o servidor respondeu 5xx — nunca uma
+// rejeição deliberada de autenticação) agora tentam de novo algumas vezes
+// antes de desistir; só uma resposta HTTP recebida com status < 500 (ex. 401
+// do `RefreshUseCase`) é tratada como falha de autenticação de verdade.
+const MAX_TRANSIENT_RETRIES = 5
+const TRANSIENT_RETRY_DELAY_MS = 5_000
+const HTTP_STATUS_SERVER_ERROR_THRESHOLD = 500
+
+class SessionRefreshTransientError extends Error {}
 // Achado #5 (review pbi-002): piso mínimo para o delay do agendamento. Sem
 // isso, um `expires_in` pequeno/zero/NaN (sem validação de runtime até este
 // ponto — ver validação em `session-context.tsx`) produzia delay <= 0 e um
@@ -39,6 +53,15 @@ const LOGIN_ROUTE = "/login"
 export { MIN_REFRESH_DELAY_MS }
 
 export const SESSION_EXPIRED_MESSAGE = "Sua sessão expirou. Entre novamente."
+
+// Achado #2 (minor, review rodada 2): o redirect antes trafegava o TEXTO da
+// mensagem na própria URL (`?message=...`) — qualquer um podia montar um
+// link `/login?message=<texto arbitrário>` e a app exibia esse texto com a
+// aparência oficial, em cima do campo de senha (vetor de phishing). Agora
+// trafega só um CÓDIGO (`?reason=session_expired`); `app/login/page.tsx`
+// resolve o código para o texto fixo via allowlist, ignorando qualquer valor
+// fora dela.
+export const SESSION_EXPIRED_REASON = "session_expired"
 
 interface RefreshedSessionResponse {
   readonly access_token: string
@@ -76,11 +99,30 @@ async function parseRefreshedSession(
 async function requestSessionRefresh(
   refreshToken: string
 ): Promise<SetSessionInput> {
-  const response = await fetch(`${API_URL}/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token: refreshToken }),
-  })
+  let response: Response
+
+  try {
+    response = await fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    })
+  } catch {
+    // fetch() rejeitou antes de qualquer resposta HTTP — rede indisponível,
+    // DNS, CORS, backend fora do ar. Não é uma rejeição de autenticação.
+    throw new SessionRefreshTransientError(
+      "Falha de rede ao tentar renovar a sessão."
+    )
+  }
+
+  if (response.status >= HTTP_STATUS_SERVER_ERROR_THRESHOLD) {
+    // Erro do servidor (5xx) — o backend nunca responde 5xx deliberadamente
+    // para uma falha de auth (`RefreshUseCase` sempre usa 401), então isso é
+    // sinal de instabilidade transitória, não de token inválido.
+    throw new SessionRefreshTransientError(
+      `Servidor indisponível ao renovar a sessão (status ${response.status}).`
+    )
+  }
 
   return parseRefreshedSession(response)
 }
@@ -102,7 +144,7 @@ export function millisecondsUntilRefresh(session: Session): number {
 }
 
 function sessionExpiredLoginUrl(): string {
-  return `${LOGIN_ROUTE}?message=${encodeURIComponent(SESSION_EXPIRED_MESSAGE)}`
+  return `${LOGIN_ROUTE}?reason=${SESSION_EXPIRED_REASON}`
 }
 
 /**
@@ -129,7 +171,10 @@ export function useRefreshScheduler(): void {
     // requisição HTTP já disparada.
     let cancelled = false
 
-    async function renewSession(currentSession: Session): Promise<void> {
+    async function renewSession(
+      currentSession: Session,
+      attempt: number
+    ): Promise<void> {
       try {
         const refreshed = await requestSessionRefresh(
           currentSession.refresh_token
@@ -138,17 +183,28 @@ export function useRefreshScheduler(): void {
           return
         }
         setSession(refreshed)
-      } catch {
+      } catch (error) {
         if (cancelled) {
           return
         }
+
+        if (
+          error instanceof SessionRefreshTransientError &&
+          attempt < MAX_TRANSIENT_RETRIES
+        ) {
+          timeoutIdRef.current = setTimeout(() => {
+            void renewSession(currentSession, attempt + 1)
+          }, TRANSIENT_RETRY_DELAY_MS)
+          return
+        }
+
         clearSession()
         router.push(sessionExpiredLoginUrl())
       }
     }
 
     timeoutIdRef.current = setTimeout(() => {
-      void renewSession(session)
+      void renewSession(session, 0)
     }, millisecondsUntilRefresh(session))
 
     return () => {

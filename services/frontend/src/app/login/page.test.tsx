@@ -1,12 +1,11 @@
 import { render, screen } from "@testing-library/react"
 
 /**
- * Achado #3 (review pbi-002): `refresh-scheduler.ts` redireciona para
- * `/login?message=...` em falha de renovação, mas nada em `login/page.tsx`
- * lia esse parâmetro. Este teste prova que, com `?message=X` na URL
- * (representada aqui pela prop `searchParams` — promise, ver
- * `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/page.md`),
- * o texto X aparece na tela.
+ * Achado #3 (review rodada 1) + achado #2 (review rodada 2): `refresh-scheduler.ts`
+ * redireciona para `/login?reason=...` em falha de renovação; `login/page.tsx`
+ * resolve o código contra uma allowlist fixa (nunca texto livre — evita que
+ * um link `?reason=<qualquer coisa>` faça a app exibir mensagem arbitrária
+ * de aparência oficial, vetor de phishing).
  *
  * `LoginPage` é um Server Component async; chamá-lo diretamente e renderizar
  * o JSX resultante (padrão comum para testar Server Components simples sem
@@ -20,20 +19,20 @@ jest.mock("next/navigation", () => ({
 }))
 
 import { SessionProvider } from "@/lib/auth/session-context"
+import { SESSION_EXPIRED_MESSAGE } from "@/lib/auth/refresh-scheduler"
 
 import LoginPage from "./page"
 
-describe("LoginPage (achado #3 — mensagem de sessão expirada)", () => {
-  it("shows the message from ?message= when present", async () => {
-    const message = "Sua sessão expirou. Entre novamente."
+describe("LoginPage (mensagem de sessão expirada)", () => {
+  it("shows the fixed message when ?reason=session_expired is present", async () => {
     const ui = await LoginPage({
-      searchParams: Promise.resolve({ message }),
+      searchParams: Promise.resolve({ reason: "session_expired" }),
     })
 
     render(<SessionProvider>{ui}</SessionProvider>)
 
     expect(screen.getByTestId("login-session-message")).toHaveTextContent(
-      message
+      SESSION_EXPIRED_MESSAGE
     )
     expect(screen.getByTestId("login-session-message-alert")).toHaveAttribute(
       "aria-live",
@@ -41,8 +40,34 @@ describe("LoginPage (achado #3 — mensagem de sessão expirada)", () => {
     )
   })
 
-  it("does not show the session-message alert when ?message= is absent", async () => {
+  it("does not show the session-message alert when ?reason= is absent", async () => {
     const ui = await LoginPage({ searchParams: Promise.resolve({}) })
+
+    render(<SessionProvider>{ui}</SessionProvider>)
+
+    expect(
+      screen.queryByTestId("login-session-message-alert")
+    ).not.toBeInTheDocument()
+  })
+
+  it("ignores a reason outside the allowlist (achado #2, review rodada 2) — no attacker-controlled text is ever rendered", async () => {
+    const ui = await LoginPage({
+      searchParams: Promise.resolve({
+        reason: "Sua conta foi bloqueada, ligue 0800-000-0000",
+      }),
+    })
+
+    render(<SessionProvider>{ui}</SessionProvider>)
+
+    expect(
+      screen.queryByTestId("login-session-message-alert")
+    ).not.toBeInTheDocument()
+  })
+
+  it("ignores a repeated query param (?reason=a&reason=b, delivered as string[]) instead of crashing or rendering it", async () => {
+    const ui = await LoginPage({
+      searchParams: Promise.resolve({ reason: ["session_expired", "outro"] }),
+    })
 
     render(<SessionProvider>{ui}</SessionProvider>)
 
