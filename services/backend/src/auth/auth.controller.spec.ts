@@ -5,16 +5,27 @@ import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 import { EmailAlreadyExistsException } from './exceptions/email-already-exists.exception';
 import { EmailNotConfirmedException } from './exceptions/email-not-confirmed.exception';
+import { AuthenticatedRequest, JwtAuthGuard } from './guards/jwt-auth.guard';
+import { ProfileRoleLookup } from './profile-role.lookup';
 import { AuthenticatedSession, LoginUseCase } from './use-cases/login.use-case';
 import { RefreshedSession, RefreshUseCase } from './use-cases/refresh.use-case';
 import { RegisteredUser, RegisterUseCase } from './use-cases/register.use-case';
 import { AuthController } from './auth.controller';
 import { UnauthorizedException } from '@nestjs/common';
+import { SUPABASE_CLIENT } from '../supabase/supabase.provider';
 
 interface ControllerOverrides {
   registerUseCase?: Partial<RegisterUseCase>;
   loginUseCase?: Partial<LoginUseCase>;
   refreshUseCase?: Partial<RefreshUseCase>;
+  profileRoleLookup?: Partial<ProfileRoleLookup>;
+  supabase?: unknown;
+}
+
+function buildFakeSupabase() {
+  return {
+    auth: { admin: { getUserById: jest.fn() } },
+  };
 }
 
 async function buildController(overrides: ControllerOverrides = {}) {
@@ -33,6 +44,14 @@ async function buildController(overrides: ControllerOverrides = {}) {
         provide: RefreshUseCase,
         useValue: overrides.refreshUseCase ?? { execute: jest.fn() },
       },
+      {
+        provide: ProfileRoleLookup,
+        useValue: overrides.profileRoleLookup ?? { execute: jest.fn() },
+      },
+      {
+        provide: SUPABASE_CLIENT,
+        useValue: overrides.supabase ?? buildFakeSupabase(),
+      },
     ],
   })
     // T12/T4: `register` e `login` estão protegidos por
@@ -43,6 +62,14 @@ async function buildController(overrides: ControllerOverrides = {}) {
     // de integração (`test/auth-register-rate-limit.e2e-spec.ts`,
     // `test/auth-login.e2e-spec.ts`).
     .overrideGuard(ThrottlerGuard)
+    .useValue({ canActivate: () => true })
+    // T5: `me` está protegido por @UseGuards(JwtAuthGuard). Mesmo racional do
+    // ThrottlerGuard acima — os testes de unidade chamam `controller.me(...)`
+    // diretamente, sem passar pelo pipeline HTTP, então o guard real (que
+    // precisa de SUPABASE_JWT_SECRET via ConfigService) só precisa ser
+    // resolvível para o módulo compilar. O comportamento de 401 sem
+    // token/com token inválido é coberto por `test/auth-me.e2e-spec.ts`.
+    .overrideGuard(JwtAuthGuard)
     .useValue({ canActivate: () => true })
     .compile();
 
@@ -208,6 +235,66 @@ describe('AuthController', () => {
       await expect(controller.refresh(validRefreshDto)).rejects.toBeInstanceOf(
         UnauthorizedException,
       );
+    });
+  });
+
+  describe('me', () => {
+    function buildRequest(userId?: string): AuthenticatedRequest {
+      return {
+        user: userId ? { sub: userId } : undefined,
+      } as AuthenticatedRequest;
+    }
+
+    it('retorna { id, email, role } do usuário do token atual (T5)', async () => {
+      const profileRoleLookup = {
+        execute: jest.fn().mockResolvedValue('adotante'),
+      };
+      const supabase = buildFakeSupabase();
+      supabase.auth.admin.getUserById.mockResolvedValue({
+        data: { user: { email: 'daniela@example.com' } },
+        error: null,
+      });
+
+      const controller = await buildController({ profileRoleLookup, supabase });
+      const result = await controller.me(buildRequest('user-1'));
+
+      expect(profileRoleLookup.execute).toHaveBeenCalledWith('user-1');
+      expect(supabase.auth.admin.getUserById).toHaveBeenCalledWith('user-1');
+      expect(result).toEqual({
+        id: 'user-1',
+        email: 'daniela@example.com',
+        role: 'adotante',
+      });
+    });
+
+    /**
+     * Defensivo (T5): `JwtAuthGuard` sempre popula `request.user.sub` antes
+     * de `me` rodar — lança 401 caso contrário, então esta requisição nunca
+     * chega aqui em produção. O teste documenta que o controller não confia
+     * cegamente nesse invariante, mesmo padrão de `RolesGuard` (achado
+     * já coberto por `roles.guard.spec.ts`).
+     */
+    it('lança UnauthorizedException se request.user estiver ausente (defensivo)', async () => {
+      const controller = await buildController();
+
+      await expect(controller.me(buildRequest())).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+    });
+
+    it('lança InternalServerErrorException se a busca do e-mail falhar (getUserById)', async () => {
+      const profileRoleLookup = {
+        execute: jest.fn().mockResolvedValue('admin'),
+      };
+      const supabase = buildFakeSupabase();
+      supabase.auth.admin.getUserById.mockResolvedValue({
+        data: { user: null },
+        error: { message: 'not found' },
+      });
+
+      const controller = await buildController({ profileRoleLookup, supabase });
+
+      await expect(controller.me(buildRequest('user-2'))).rejects.toThrow();
     });
   });
 });

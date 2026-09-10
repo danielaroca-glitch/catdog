@@ -1,17 +1,16 @@
 import {
   CanActivate,
   ExecutionContext,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
+import { SupabaseClient } from '@supabase/supabase-js';
 import type { Request } from 'express';
+import { SUPABASE_CLIENT } from '../../supabase/supabase.provider';
 
 const BEARER_PREFIX = 'Bearer ';
 const INVALID_TOKEN_MESSAGE = 'Token de acesso ausente ou inválido.';
-const JWKS_PATH = '/auth/v1/.well-known/jwks.json';
-const ALLOWED_ALGORITHMS = ['ES256'];
 
 export interface AuthenticatedUser {
   sub: string;
@@ -21,33 +20,30 @@ export interface AuthenticatedRequest extends Request {
   user?: AuthenticatedUser;
 }
 
-function requireEnv(config: ConfigService, key: string): string {
-  const value = config.get<string>(key);
-  if (!value) {
-    throw new Error(
-      `Missing required environment variable: ${key}. Check your .env file (see .env.example).`,
-    );
-  }
-  return value;
-}
-
 /**
  * Guard de autenticação (AUTZ-04/AUTZ-05). Extrai o JWT do header
- * `Authorization: Bearer <token>` e verifica a assinatura/expiração contra
- * a chave PÚBLICA do projeto Supabase, publicada em
- * `{SUPABASE_URL}/auth/v1/.well-known/jwks.json`.
+ * `Authorization: Bearer <token>` e verifica assinatura/expiração LOCALMENTE
+ * via `supabase.auth.getClaims(token)` — o método oficial do SDK, que valida
+ * contra o JSON Web Key Set do projeto (cacheado após a primeira busca) via
+ * WebCrypto, sem round-trip ao Supabase a cada requisição.
  *
- * [DECISÃO] A primeira versão deste guard verificava localmente via HS256
- * com um segredo compartilhado (`SUPABASE_JWT_SECRET`) — presumindo que o
- * projeto usava assinatura simétrica legada. Rodando e2e reais (T6, review
- * desta PBI), todo token de verdade era rejeitado: o JWKS do projeto só
- * publica uma chave ES256 (assimétrica) — `SUPABASE_JWT_SECRET` no `.env`
- * hoje contém o `kid` da chave, não um segredo HS256 utilizável. Corrigido
- * para verificação via JWKS (`jose.createRemoteJWKSet`, que busca e cacheia
- * a chave pública automaticamente, incluindo rotação) — sem round-trip ao
- * Supabase por requisição (a chave é cacheada em memória do processo, só
- * refeita a busca se o `kid` do token não bater com o cache), e sem exigir
- * nenhum segredo compartilhado.
+ * [NOTA T5] A implementação original desta guard (T2, commit `45b73d3`)
+ * verificava localmente com `jsonwebtoken` + `SUPABASE_JWT_SECRET` (HS256).
+ * Esse caminho nunca havia sido exercitado contra um token real emitido pelo
+ * projeto Supabase — só contra tokens fabricados no próprio teste unitário
+ * com um segredo fake. Ao escrever o e2e de T5 (que faz login de verdade
+ * para obter um `access_token` real), ficou provado que este projeto assina
+ * tokens com uma chave ASSIMÉTRICA (`alg: ES256`, JWT Signing Keys — o
+ * padrão atual do Supabase, substituindo o segredo simétrico legado). Um
+ * `jsonwebtoken.verify(token, SUPABASE_JWT_SECRET, { algorithms: ['HS256'] })`
+ * rejeita QUALQUER token real deste projeto antes mesmo de checar a
+ * assinatura — bug latente que bloqueava não só T5 como qualquer consumidor
+ * futuro desta guard (ex. T6/admin.controller). `getClaims` cobre os dois
+ * mundos: verificação local via WebCrypto quando a chave é assimétrica (este
+ * projeto), e fallback automático a uma validação equivalente a `getUser()`
+ * apenas se o projeto ainda usar segredo simétrico — sem exigir nenhuma
+ * configuração adicional aqui. `SUPABASE_JWT_SECRET`/`ConfigService`/
+ * `jsonwebtoken` deixam de ser necessários nesta guard.
  *
  * Header ausente, token malformado, assinatura inválida e token expirado
  * resultam todos na MESMA `UnauthorizedException` genérica — o motivo
@@ -60,12 +56,9 @@ function requireEnv(config: ConfigService, key: string): string {
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  private readonly jwks: ReturnType<typeof createRemoteJWKSet>;
-
-  constructor(config: ConfigService) {
-    const supabaseUrl = requireEnv(config, 'SUPABASE_URL');
-    this.jwks = createRemoteJWKSet(new URL(`${supabaseUrl}${JWKS_PATH}`));
-  }
+  constructor(
+    @Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
@@ -89,21 +82,25 @@ export class JwtAuthGuard implements CanActivate {
   }
 
   private async verifyToken(token: string): Promise<AuthenticatedUser> {
-    const payload = await this.decodeAndVerify(token);
+    const claims = await this.decodeAndVerify(token);
 
-    if (typeof payload.sub !== 'string') {
+    if (!claims?.sub) {
       throw new UnauthorizedException(INVALID_TOKEN_MESSAGE);
     }
 
-    return { sub: payload.sub };
+    return { sub: claims.sub };
   }
 
-  private async decodeAndVerify(token: string): Promise<JWTPayload> {
+  private async decodeAndVerify(
+    token: string,
+  ): Promise<{ sub?: string } | undefined> {
     try {
-      const { payload } = await jwtVerify(token, this.jwks, {
-        algorithms: ALLOWED_ALGORITHMS,
-      });
-      return payload;
+      const { data, error } = await this.supabase.auth.getClaims(token);
+      if (error) {
+        throw new UnauthorizedException(INVALID_TOKEN_MESSAGE);
+      }
+
+      return data?.claims;
     } catch {
       throw new UnauthorizedException(INVALID_TOKEN_MESSAGE);
     }

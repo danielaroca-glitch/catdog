@@ -1,26 +1,7 @@
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { SignJWT, exportJWK, generateKeyPair, type JWK } from 'jose';
+import { SUPABASE_CLIENT } from '../../supabase/supabase.provider';
 import { JwtAuthGuard } from './jwt-auth.guard';
-
-const TEST_SUPABASE_URL = 'https://test-project.supabase.co';
-
-// O guard busca a chave pública via `createRemoteJWKSet` (rede). Para o
-// teste rodar sem rede e determinístico, mockamos só esse export do `jose`
-// para devolver um JWKS LOCAL (`createLocalJWKSet`) montado com a chave
-// pública de teste gerada abaixo — `jwtVerify` (a verificação de verdade)
-// continua sendo a implementação real do `jose`, não mockada.
-let testPublicJwk: JWK;
-
-jest.mock('jose', () => {
-  const actual = jest.requireActual<typeof import('jose')>('jose');
-  return {
-    ...actual,
-    createRemoteJWKSet: () =>
-      actual.createLocalJWKSet({ keys: [testPublicJwk] }),
-  };
-});
 
 interface FakeRequest {
   headers: Record<string, string>;
@@ -38,43 +19,20 @@ function buildExecutionContext(headers: Record<string, string> = {}) {
   return { context, request };
 }
 
-async function buildGuard(supabaseUrl: string = TEST_SUPABASE_URL) {
-  const config = { get: jest.fn().mockReturnValue(supabaseUrl) };
+function buildDefaultGetClaims(): jest.Mock {
+  return jest.fn().mockRejectedValue(new Error('getClaims not stubbed'));
+}
+
+async function buildGuard(getClaims: jest.Mock = buildDefaultGetClaims()) {
+  const supabase = { auth: { getClaims } };
   const module = await Test.createTestingModule({
-    providers: [JwtAuthGuard, { provide: ConfigService, useValue: config }],
+    providers: [JwtAuthGuard, { provide: SUPABASE_CLIENT, useValue: supabase }],
   }).compile();
 
   return module.get(JwtAuthGuard);
 }
 
 describe('JwtAuthGuard', () => {
-  let privateKey: CryptoKey;
-  let wrongPrivateKey: CryptoKey;
-
-  beforeAll(async () => {
-    const keyPair = await generateKeyPair('ES256', { extractable: true });
-    privateKey = keyPair.privateKey;
-    testPublicJwk = await exportJWK(keyPair.publicKey);
-    testPublicJwk.alg = 'ES256';
-
-    const wrongKeyPair = await generateKeyPair('ES256', {
-      extractable: true,
-    });
-    wrongPrivateKey = wrongKeyPair.privateKey;
-  });
-
-  async function signToken(
-    payload: Record<string, unknown>,
-    key: CryptoKey = privateKey,
-    expiresAt?: number,
-  ) {
-    const jwt = new SignJWT(payload).setProtectedHeader({ alg: 'ES256' });
-    if (expiresAt !== undefined) {
-      jwt.setExpirationTime(expiresAt);
-    }
-    return jwt.sign(key);
-  }
-
   it('lança UnauthorizedException quando o header Authorization está ausente (AUTZ-04)', async () => {
     const guard = await buildGuard();
     const { context } = buildExecutionContext();
@@ -95,8 +53,12 @@ describe('JwtAuthGuard', () => {
     );
   });
 
-  it('lança UnauthorizedException quando o token está malformado', async () => {
-    const guard = await buildGuard();
+  it('lança UnauthorizedException quando o token está malformado (getClaims retorna error)', async () => {
+    const getClaims = jest.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'Invalid JWT structure' },
+    });
+    const guard = await buildGuard(getClaims);
     const { context } = buildExecutionContext({
       authorization: 'Bearer not-a-jwt',
     });
@@ -106,14 +68,14 @@ describe('JwtAuthGuard', () => {
     );
   });
 
-  it('lança UnauthorizedException, sem detalhe interno na mensagem, quando a assinatura do token é inválida (assinado com outra chave)', async () => {
-    const guard = await buildGuard();
-    const tokenSignedWithWrongKey = await signToken(
-      { sub: 'user-1' },
-      wrongPrivateKey,
-    );
+  it('lança UnauthorizedException, sem detalhe interno na mensagem, quando a assinatura do token é inválida', async () => {
+    const getClaims = jest.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'Invalid JWT signature' },
+    });
+    const guard = await buildGuard(getClaims);
     const { context } = buildExecutionContext({
-      authorization: `Bearer ${tokenSignedWithWrongKey}`,
+      authorization: 'Bearer token-com-assinatura-invalida',
     });
 
     let caughtError: unknown;
@@ -124,18 +86,31 @@ describe('JwtAuthGuard', () => {
     }
 
     expect(caughtError).toBeInstanceOf(UnauthorizedException);
-    expect((caughtError as Error).message).not.toMatch(/jwt|signature|jwk/i);
+    expect((caughtError as Error).message).not.toMatch(/signature/i);
   });
 
-  it('lança UnauthorizedException quando o token está expirado', async () => {
-    const guard = await buildGuard();
-    const expiredToken = await signToken(
-      { sub: 'user-1' },
-      privateKey,
-      Math.floor(Date.now() / 1000) - 60,
-    );
+  it('lança UnauthorizedException quando o token está expirado (getClaims retorna error)', async () => {
+    const getClaims = jest.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'JWT expired' },
+    });
+    const guard = await buildGuard(getClaims);
     const { context } = buildExecutionContext({
-      authorization: `Bearer ${expiredToken}`,
+      authorization: 'Bearer token-expirado',
+    });
+
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it('lança UnauthorizedException quando getClaims rejeita a promise (ex.: JWT com estrutura inválida)', async () => {
+    const getClaims = jest
+      .fn()
+      .mockRejectedValue(new Error('Invalid JWT structure'));
+    const guard = await buildGuard(getClaims);
+    const { context } = buildExecutionContext({
+      authorization: 'Bearer token-quebrado',
     });
 
     await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
@@ -144,14 +119,18 @@ describe('JwtAuthGuard', () => {
   });
 
   it('retorna true e anexa request.user.sub quando o token é válido (AUTZ-04)', async () => {
-    const guard = await buildGuard();
-    const token = await signToken({ sub: 'user-123' });
+    const getClaims = jest.fn().mockResolvedValue({
+      data: { claims: { sub: 'user-123' } },
+      error: null,
+    });
+    const guard = await buildGuard(getClaims);
     const { context, request } = buildExecutionContext({
-      authorization: `Bearer ${token}`,
+      authorization: 'Bearer token-valido',
     });
 
     const result = await guard.canActivate(context);
 
+    expect(getClaims).toHaveBeenCalledWith('token-valido');
     expect(result).toBe(true);
     expect(request.user).toEqual({ sub: 'user-123' });
   });
