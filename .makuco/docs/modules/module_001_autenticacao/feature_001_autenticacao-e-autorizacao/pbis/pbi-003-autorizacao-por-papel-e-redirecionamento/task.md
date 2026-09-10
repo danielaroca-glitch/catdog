@@ -101,10 +101,12 @@ T4 ──→ T7 ──→ T8 ──→ T9
 - Skill: `makuco-backend`
 
 **Done when**:
-- [ ] Endpoint sem `@Roles()` — guard permite qualquer usuário autenticado (no-op)
-- [ ] Endpoint com `@Roles('admin')`, usuário com papel `admin` — permite
-- [ ] Endpoint com `@Roles('admin')`, usuário com papel `adotante` — `ForbiddenException` (403)
-- [ ] Papel é lido via `ProfileRoleLookup` a cada `canActivate` — nunca cacheado entre requisições (AUTZ-03)
+- [x] Endpoint sem `@Roles()` — guard permite qualquer usuário autenticado (no-op)
+- [x] Endpoint com `@Roles('admin')`, usuário com papel `admin` — permite
+- [x] Endpoint com `@Roles('admin')`, usuário com papel `adotante` — `ForbiddenException` (403)
+- [x] Papel é lido via `ProfileRoleLookup` a cada `canActivate` — nunca cacheado entre requisições (AUTZ-03)
+
+**Status**: ✅ Concluída — commit `9f1f1fb`. 5 testes (incl. um defensivo para `request.user` ausente, sem reimplementar verificação de JWT). Quality gate per-task: Gate 0/1/3/4 PASS. `RolesGuard` não registrado em nenhum controller ainda — wiring fica para T5/T6.
 
 **Tests**: unit
 **Gate**: quick
