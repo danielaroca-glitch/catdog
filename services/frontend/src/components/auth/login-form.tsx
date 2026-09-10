@@ -9,6 +9,7 @@ import * as z from "zod"
 
 import { ApiError, EMAIL_NOT_CONFIRMED_CODE, loginUser } from "@/lib/api/auth"
 import { useSession } from "@/lib/auth/session-context"
+import { roleHomeRoute } from "@/components/auth/require-role"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -21,11 +22,6 @@ import {
 } from "@/components/ui/card"
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-
-// Redirecionamento real por papel é da pbi-003 (ver EXPERIENCE.md: "após o
-// sucesso, o redirecionamento por papel é tratado na PBI 3") — "/" é o
-// destino placeholder desta task.
-const HOME_ROUTE = "/"
 
 const HTTP_STATUS_UNAUTHORIZED = 401
 const HTTP_STATUS_FORBIDDEN = 403
@@ -165,8 +161,11 @@ export function LoginForm({ onSubmit, sessionMessage }: LoginFormProps) {
     try {
       const authenticatedSession = await loginUser(values)
       setSession(authenticatedSession)
-      // TODO(pbi-003): redirecionamento real por papel
-      router.push(HOME_ROUTE)
+      // AUTZ-01: redireciona à área correspondente ao papel retornado pelo
+      // login (E2E-01 adotante → /cliente, E2E-02 admin → /admin) — mesmo
+      // mapeamento usado pelo botão "Voltar para minha área" de
+      // AccessDenied (T8), via `roleHomeRoute`.
+      router.push(roleHomeRoute(authenticatedSession.role))
     } catch (error) {
       handleLoginError(error)
     }

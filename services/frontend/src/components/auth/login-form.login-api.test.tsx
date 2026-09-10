@@ -48,11 +48,14 @@ describe("LoginForm - integração com a API de login (T8)", () => {
     loginUserMock.mockReset()
   })
 
-  it("em submit bem-sucedido, chama setSession com o resultado e navega para '/'", async () => {
+  // E2E-01 (pbi-003): login com role 'adotante' redireciona à área do
+  // cliente, sem tela intermediária.
+  it("em submit bem-sucedido com role 'adotante', chama setSession com o resultado e navega para '/cliente' (E2E-01)", async () => {
     const authenticatedSession = {
       access_token: "access-token-123",
       refresh_token: "refresh-token-456",
       expires_in: 3600,
+      role: "adotante" as const,
     }
     loginUserMock.mockResolvedValueOnce(authenticatedSession)
     const user = userEvent.setup()
@@ -70,9 +73,32 @@ describe("LoginForm - integração com a API de login (T8)", () => {
     await waitFor(() => {
       expect(setSessionMock).toHaveBeenCalledWith(authenticatedSession)
     })
-    // TODO(pbi-003): redirecionamento real por papel — hoje sempre "/".
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith("/")
+      expect(pushMock).toHaveBeenCalledWith("/cliente")
+    })
+  })
+
+  // E2E-02 (pbi-003): login com role 'admin' redireciona à área
+  // administrativa.
+  it("em submit bem-sucedido com role 'admin', navega para '/admin' (E2E-02)", async () => {
+    const authenticatedSession = {
+      access_token: "access-token-123",
+      refresh_token: "refresh-token-456",
+      expires_in: 3600,
+      role: "admin" as const,
+    }
+    loginUserMock.mockResolvedValueOnce(authenticatedSession)
+    const user = userEvent.setup()
+    render(<LoginForm />)
+
+    await fillValidForm(user)
+    await user.click(screen.getByTestId("login-submit-button"))
+
+    await waitFor(() => {
+      expect(setSessionMock).toHaveBeenCalledWith(authenticatedSession)
+    })
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith("/admin")
     })
   })
 
