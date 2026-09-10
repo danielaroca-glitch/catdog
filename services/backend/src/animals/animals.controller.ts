@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -17,6 +18,7 @@ import {
   Animal,
   CreateAnimalUseCase,
 } from './use-cases/create-animal.use-case';
+import { ListAnimalsUseCase } from './use-cases/list-animals.use-case';
 import { UpdateAnimalUseCase } from './use-cases/update-animal.use-case';
 
 /**
@@ -34,7 +36,13 @@ export class AnimalsController {
   constructor(
     private readonly createAnimalUseCase: CreateAnimalUseCase,
     private readonly updateAnimalUseCase: UpdateAnimalUseCase,
+    private readonly listAnimalsUseCase: ListAnimalsUseCase,
   ) {}
+
+  @Get()
+  async list(): Promise<Animal[]> {
+    return this.listAnimalsUseCase.execute();
+  }
 
   @Post()
   async create(@Body() dto: CreateAnimalDto): Promise<Animal> {

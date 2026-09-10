@@ -1,4 +1,5 @@
 import { CreateAnimalUseCase } from './use-cases/create-animal.use-case';
+import { ListAnimalsUseCase } from './use-cases/list-animals.use-case';
 import { UpdateAnimalUseCase } from './use-cases/update-animal.use-case';
 import { AnimalsController } from './animals.controller';
 
@@ -25,8 +26,13 @@ describe('AnimalsController', () => {
       execute: createExecuteMock,
     } as unknown as CreateAnimalUseCase;
     const updateUseCase = {} as UpdateAnimalUseCase;
+    const listUseCase = {} as ListAnimalsUseCase;
 
-    const controller = new AnimalsController(createUseCase, updateUseCase);
+    const controller = new AnimalsController(
+      createUseCase,
+      updateUseCase,
+      listUseCase,
+    );
     const dto = { name: 'Rex', species_id: 'species-1' };
     const result = await controller.create(dto);
 
@@ -41,12 +47,36 @@ describe('AnimalsController', () => {
     const updateUseCase = {
       execute: updateExecuteMock,
     } as unknown as UpdateAnimalUseCase;
+    const listUseCase = {} as ListAnimalsUseCase;
 
-    const controller = new AnimalsController(createUseCase, updateUseCase);
+    const controller = new AnimalsController(
+      createUseCase,
+      updateUseCase,
+      listUseCase,
+    );
     const dto = { name: 'Rex 2' };
     const result = await controller.update('animal-1', dto);
 
     expect(updateExecuteMock).toHaveBeenCalledWith('animal-1', dto);
     expect(result).toEqual(updatedAnimal);
+  });
+
+  it('list: delega ao ListAnimalsUseCase e retorna a lista', async () => {
+    const listExecuteMock = jest.fn().mockResolvedValue([animal]);
+    const createUseCase = {} as CreateAnimalUseCase;
+    const updateUseCase = {} as UpdateAnimalUseCase;
+    const listUseCase = {
+      execute: listExecuteMock,
+    } as unknown as ListAnimalsUseCase;
+
+    const controller = new AnimalsController(
+      createUseCase,
+      updateUseCase,
+      listUseCase,
+    );
+    const result = await controller.list();
+
+    expect(listExecuteMock).toHaveBeenCalled();
+    expect(result).toEqual([animal]);
   });
 });
