@@ -130,8 +130,15 @@ export class AuthController {
    *
    * Sem token ou token inválido/malformado nunca chega aqui — `JwtAuthGuard`
    * lança 401 antes deste método rodar.
+   *
+   * [DECISÃO — achado #3 major, review rodada 1 do pbi-003] `@Throttle`
+   * generoso: o fallback de `JwtAuthGuard`/`getClaims` para um token com
+   * `kid` desconhecido dispara chamadas reais ao Supabase (JWKS + `getUser`)
+   * mesmo sem autenticação válida — sem limite, isso é uma amplificação de
+   * DoS não autenticada. Mesmo padrão já aplicado a `/auth/refresh`.
    */
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @Get('me')
   async me(
     @Req() request: AuthenticatedRequest,
@@ -161,7 +168,7 @@ export class AuthController {
   private async fetchEmail(userId: string): Promise<string> {
     const { data, error } = await this.supabase.auth.admin.getUserById(userId);
 
-    if (error || !data.user?.email) {
+    if (error || !data?.user?.email) {
       throw new InternalServerErrorException(CURRENT_USER_LOOKUP_ERROR_MESSAGE);
     }
 

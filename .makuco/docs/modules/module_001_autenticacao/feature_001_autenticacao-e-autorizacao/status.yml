@@ -49,10 +49,10 @@ pbis:
       task-08: done
       task-09: done
   autorizacao-por-papel-e-redirecionamento:
-    current_stage: "PBI proposto (makuco-analisar)"
+    current_stage: "7. Review"
     business: pending
     technical: pending
     spec: pending
     plan: pending
-    review: pending
+    review: changes-requested
     documentation: pending
