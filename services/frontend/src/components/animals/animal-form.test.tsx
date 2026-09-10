@@ -5,10 +5,13 @@ import { ApiError } from "../../lib/api/auth"
 import { AnimalForm } from "./animal-form"
 
 const createAnimalMock = jest.fn()
+const updateAnimalMock = jest.fn()
 
 jest.mock("../../lib/api/animals", () => ({
   createAnimal: (...args: unknown[]) =>
     (createAnimalMock as (...args: unknown[]) => unknown)(...args),
+  updateAnimal: (...args: unknown[]) =>
+    (updateAnimalMock as (...args: unknown[]) => unknown)(...args),
 }))
 
 jest.mock("../../lib/auth/session-context", () => ({
@@ -29,6 +32,7 @@ const SPECIES = [{ id: "species-1", name: "Cachorro" }]
 describe("AnimalForm", () => {
   beforeEach(() => {
     createAnimalMock.mockReset()
+    updateAnimalMock.mockReset()
   })
 
   // ALTA-08: submeter sem preencher um campo obrigatório exibe erro de
@@ -91,5 +95,41 @@ describe("AnimalForm", () => {
       "species_id não corresponde a uma espécie existente."
     )
     expect(screen.queryByTestId("animal-form-success")).not.toBeInTheDocument()
+  })
+
+  // EDICAO-01/EDICAO-02: com animalToEdit, o formulário nasce preenchido e
+  // o submit chama updateAnimal, não createAnimal.
+  it("pre-fills the fields and calls updateAnimal when animalToEdit is provided", async () => {
+    const animalToEdit = {
+      id: "animal-1",
+      name: "Rex",
+      species_id: "species-1",
+      active: true,
+      created_at: "2026-09-10T00:00:00.000Z",
+    }
+    updateAnimalMock.mockResolvedValue({ ...animalToEdit, name: "Rex 2" })
+    const user = userEvent.setup()
+    render(<AnimalForm initialSpecies={SPECIES} animalToEdit={animalToEdit} />)
+
+    expect(screen.getByTestId("animal-name-input")).toHaveValue("Rex")
+    expect(screen.getByTestId("animal-species-select")).toHaveValue(
+      "species-1"
+    )
+
+    await user.clear(screen.getByTestId("animal-name-input"))
+    await user.type(screen.getByTestId("animal-name-input"), "Rex 2")
+    await user.click(screen.getByTestId("animal-submit-button"))
+
+    await waitFor(() => {
+      expect(updateAnimalMock).toHaveBeenCalledWith(
+        "animal-1",
+        { name: "Rex 2", species_id: "species-1" },
+        "access-token-1"
+      )
+    })
+    expect(createAnimalMock).not.toHaveBeenCalled()
+    expect(
+      await screen.findByTestId("animal-form-success")
+    ).toHaveTextContent("Animal atualizado com sucesso.")
   })
 })

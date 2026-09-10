@@ -7,7 +7,7 @@ import { Controller, useForm } from "react-hook-form"
 import * as z from "zod"
 
 import { ApiError } from "@/lib/api/auth"
-import { createAnimal } from "@/lib/api/animals"
+import { createAnimal, updateAnimal, type Animal } from "@/lib/api/animals"
 import { listSpecies, type SpeciesOption } from "@/lib/api/species"
 import { useSession } from "@/lib/auth/session-context"
 import { Button } from "@/components/ui/button"
@@ -22,8 +22,10 @@ import {
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
-const GENERIC_SUBMIT_ERROR_MESSAGE =
+const GENERIC_CREATE_ERROR_MESSAGE =
   "Não foi possível cadastrar o animal. Tente novamente mais tarde."
+const GENERIC_UPDATE_ERROR_MESSAGE =
+  "Não foi possível atualizar o animal. Tente novamente mais tarde."
 const GENERIC_SPECIES_ERROR_MESSAGE =
   "Não foi possível carregar a lista de espécies. Tente novamente mais tarde."
 
@@ -48,10 +50,22 @@ export interface AnimalFormProps {
    * `listSpecies`. Usado principalmente em testes.
    */
   readonly initialSpecies?: SpeciesOption[]
+  /**
+   * Animal a editar (pbi-002, EDICAO-01/EDICAO-02). Quando informado, o
+   * formulário nasce preenchido com os dados desse animal e o submit chama
+   * `updateAnimal` em vez de `createAnimal`. Omitido → modo de criação
+   * (comportamento original, T6 de pbi-001).
+   */
+  readonly animalToEdit?: Animal
 }
 
-export function AnimalForm({ onSubmit, initialSpecies }: AnimalFormProps) {
+export function AnimalForm({
+  onSubmit,
+  initialSpecies,
+  animalToEdit,
+}: AnimalFormProps) {
   const { session } = useSession()
+  const isEditMode = animalToEdit !== undefined
   const [species, setSpecies] = useState<SpeciesOption[]>(initialSpecies ?? [])
   const [speciesError, setSpeciesError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -61,8 +75,8 @@ export function AnimalForm({ onSubmit, initialSpecies }: AnimalFormProps) {
     resolver: zodResolver(animalFormSchema),
     mode: "onBlur",
     defaultValues: {
-      name: "",
-      species_id: "",
+      name: animalToEdit?.name ?? "",
+      species_id: animalToEdit?.species_id ?? "",
     },
   })
 
@@ -96,22 +110,31 @@ export function AnimalForm({ onSubmit, initialSpecies }: AnimalFormProps) {
     }
 
     try {
-      await createAnimal(values, session.access_token)
+      if (isEditMode) {
+        await updateAnimal(animalToEdit.id, values, session.access_token)
+      } else {
+        await createAnimal(values, session.access_token)
+      }
       setSubmitSuccess(true)
-      form.reset()
+      if (!isEditMode) {
+        form.reset()
+      }
     } catch (error) {
-      setSubmitError(
-        error instanceof ApiError ? error.message : GENERIC_SUBMIT_ERROR_MESSAGE
-      )
+      const fallback = isEditMode
+        ? GENERIC_UPDATE_ERROR_MESSAGE
+        : GENERIC_CREATE_ERROR_MESSAGE
+      setSubmitError(error instanceof ApiError ? error.message : fallback)
     }
   }
 
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle>Cadastrar animal</CardTitle>
+        <CardTitle>{isEditMode ? "Editar animal" : "Cadastrar animal"}</CardTitle>
         <CardDescription>
-          Adicione um novo animal disponível para adoção.
+          {isEditMode
+            ? "Atualize os dados deste animal."
+            : "Adicione um novo animal disponível para adoção."}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -138,7 +161,9 @@ export function AnimalForm({ onSubmit, initialSpecies }: AnimalFormProps) {
                 data-testid="animal-form-success"
                 className="text-sm font-normal text-primary"
               >
-                Animal cadastrado com sucesso.
+                {isEditMode
+                  ? "Animal atualizado com sucesso."
+                  : "Animal cadastrado com sucesso."}
               </div>
             )}
             {speciesError && (
@@ -226,7 +251,13 @@ export function AnimalForm({ onSubmit, initialSpecies }: AnimalFormProps) {
               data-testid="animal-submit-spinner"
             />
           )}
-          {isSubmitting ? "Cadastrando..." : "Cadastrar"}
+          {isEditMode
+            ? isSubmitting
+              ? "Salvando..."
+              : "Salvar"
+            : isSubmitting
+              ? "Cadastrando..."
+              : "Cadastrar"}
         </Button>
       </CardFooter>
     </Card>
