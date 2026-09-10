@@ -105,7 +105,9 @@ export function AnimalForm({
     }
 
     if (!session) {
-      setSubmitError(GENERIC_SUBMIT_ERROR_MESSAGE)
+      setSubmitError(
+        isEditMode ? GENERIC_UPDATE_ERROR_MESSAGE : GENERIC_CREATE_ERROR_MESSAGE
+      )
       return
     }
 
