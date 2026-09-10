@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
+import { ApiError } from "../../lib/api/auth"
 import { AnimalForm } from "./animal-form"
 
 const createAnimalMock = jest.fn()
@@ -70,5 +71,25 @@ describe("AnimalForm", () => {
     expect(
       await screen.findByTestId("animal-form-success")
     ).toBeInTheDocument()
+  })
+
+  it("shows the backend's error message when createAnimal rejects with an ApiError", async () => {
+    createAnimalMock.mockRejectedValue(
+      new ApiError(400, "species_id não corresponde a uma espécie existente.")
+    )
+    const user = userEvent.setup()
+    render(<AnimalForm initialSpecies={SPECIES} />)
+
+    await user.type(screen.getByTestId("animal-name-input"), "Rex")
+    await user.selectOptions(
+      screen.getByTestId("animal-species-select"),
+      "species-1"
+    )
+    await user.click(screen.getByTestId("animal-submit-button"))
+
+    expect(await screen.findByTestId("animal-form-error")).toHaveTextContent(
+      "species_id não corresponde a uma espécie existente."
+    )
+    expect(screen.queryByTestId("animal-form-success")).not.toBeInTheDocument()
   })
 })
