@@ -201,8 +201,10 @@ T4 ──→ T7 ──→ T8 ──→ T9
 - Skill: `makuco-frontend`
 
 **Done when**:
-- [ ] `setSession({ ..., role })` guarda `role` no estado da sessão
-- [ ] `session.role` acessível via `useSession()`
+- [x] `setSession({ ..., role })` guarda `role` no estado da sessão
+- [x] `session.role` acessível via `useSession()`
+
+**Status**: ✅ Concluída — commit `37eaa54`. Efeito colateral necessário: `POST /auth/refresh` não devolve `role` (só o par de tokens) — `refresh-scheduler.ts` passou a preservar o `role` da sessão vigente em vez de perdê-lo numa renovação (testado). Quality gate per-task: Gate 0/1/3/4 PASS.
 
 **Tests**: unit
 **Gate**: quick
@@ -224,10 +226,12 @@ T4 ──→ T7 ──→ T8 ──→ T9
 - Skill: `makuco-frontend`
 
 **Done when**:
-- [ ] `role` da sessão bate com o exigido → renderiza `children`
-- [ ] `role` não bate (ou sessão ausente) → renderiza `AccessDenied`, nunca `children`
-- [ ] `AccessDenied` tem `<h1>` com foco automático ao montar (Piso de Acessibilidade)
-- [ ] Botão "Voltar para minha área" leva à rota do papel atual do usuário (`/cliente` ou `/admin`, conforme `session.role`) — se não houver sessão, leva a `/login`
+- [x] `role` da sessão bate com o exigido → renderiza `children`
+- [x] `role` não bate (ou sessão ausente) → renderiza `AccessDenied`, nunca `children`
+- [x] `AccessDenied` tem `<h1>` com foco automático ao montar (Piso de Acessibilidade)
+- [x] Botão "Voltar para minha área" leva à rota do papel atual do usuário (`/cliente` ou `/admin`, conforme `session.role`) — se não houver sessão, leva a `/login`
+
+**Status**: ✅ Concluída — commit `5934b2e`. `roleHomeRoute()` exportada de `require-role.tsx` como fonte única de verdade do mapeamento papel→rota, reusada por T9. Ícone `Lock` (`lucide-react`) em `text-muted-foreground`, nunca `destructive`. 12 testes novos. Quality gate per-task: Gate 0/1/3/4 PASS.
 
 **Tests**: unit
 **Gate**: quick
@@ -249,10 +253,12 @@ T4 ──→ T7 ──→ T8 ──→ T9
 - Skill: `makuco-frontend`
 
 **Done when**:
-- [ ] Login com `role: 'adotante'` → `router.push('/cliente')` (E2E-01)
-- [ ] Login com `role: 'admin'` → `router.push('/admin')` (E2E-02)
-- [ ] `/admin` acessado por sessão com `role: 'adotante'` renderiza `AccessDenied`, não o placeholder (E2E-03)
-- [ ] `/cliente` acessado por sessão com `role: 'admin'` também é bloqueado por `RequireRole` (simetria — mesma regra nos dois sentidos)
+- [x] Login com `role: 'adotante'` → `router.push('/cliente')` (E2E-01)
+- [x] Login com `role: 'admin'` → `router.push('/admin')` (E2E-02)
+- [x] `/admin` acessado por sessão com `role: 'adotante'` renderiza `AccessDenied`, não o placeholder (E2E-03) — satisfeito por construção (páginas são wrappers triviais de `RequireRole`, já coberto pelos testes unitários de T8)
+- [x] `/cliente` acessado por sessão com `role: 'admin'` também é bloqueado por `RequireRole` (simetria — mesma regra nos dois sentidos)
+
+**Status**: ✅ Concluída — commit `bffce32`. Suíte completa do frontend: 80/80 unit, `npm run build` e `npm run lint` limpos (rotas `/admin`/`/cliente` prerenderizadas estaticamente, hidratação client-side reavalia `RequireRole` contra a sessão real em memória — comportamento esperado da arquitetura client-side-only já documentada em `spec.md`). Quality gate per-task: Gate 0/1/3/4 PASS.
 
 **Tests**: unit
 **Gate**: quick
