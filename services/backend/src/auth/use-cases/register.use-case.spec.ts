@@ -3,6 +3,7 @@ import { InternalServerErrorException } from '@nestjs/common';
 import { SUPABASE_CLIENT } from '../../supabase/supabase.provider';
 import { RegisterDto } from '../dto/register.dto';
 import { EmailAlreadyExistsException } from '../exceptions/email-already-exists.exception';
+import { ProfileRoleLookup } from '../profile-role.lookup';
 import { RegisterUseCase } from './register.use-case';
 
 function buildProfilesQuery(result: { data: unknown; error: unknown }) {
@@ -28,6 +29,7 @@ async function buildUseCase(supabase: unknown) {
   const module = await Test.createTestingModule({
     providers: [
       RegisterUseCase,
+      ProfileRoleLookup,
       { provide: SUPABASE_CLIENT, useValue: supabase },
     ],
   }).compile();
