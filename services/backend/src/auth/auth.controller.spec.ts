@@ -125,11 +125,12 @@ describe('AuthController', () => {
       senha: 'senhaForte123',
     });
 
-    it('retorna a sessão autenticada (access_token + refresh_token) em sucesso (LOGIN-01)', async () => {
+    it('retorna a sessão autenticada (access_token + refresh_token + role) em sucesso (LOGIN-01, AUTZ-01)', async () => {
       const session: AuthenticatedSession = {
         access_token: 'access-token-1',
         refresh_token: 'refresh-token-1',
         expires_in: 3600,
+        role: 'adotante',
       };
       const loginUseCase = {
         execute: jest.fn().mockResolvedValue(session),
