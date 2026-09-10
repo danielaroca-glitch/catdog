@@ -5,11 +5,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { verify, type JwtPayload } from 'jsonwebtoken';
+import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 import type { Request } from 'express';
 
 const BEARER_PREFIX = 'Bearer ';
 const INVALID_TOKEN_MESSAGE = 'Token de acesso ausente ou inválido.';
+const JWKS_PATH = '/auth/v1/.well-known/jwks.json';
+const ALLOWED_ALGORITHMS = ['ES256'];
 
 export interface AuthenticatedUser {
   sub: string;
@@ -31,14 +33,21 @@ function requireEnv(config: ConfigService, key: string): string {
 
 /**
  * Guard de autenticação (AUTZ-04/AUTZ-05). Extrai o JWT do header
- * `Authorization: Bearer <token>` e verifica assinatura/expiração
- * LOCALMENTE — via `jsonwebtoken.verify` com `SUPABASE_JWT_SECRET` (HS256) —
- * sem round-trip ao Supabase (sem chamar `auth.getUser()`), para não pagar
- * uma chamada de rede a cada requisição autenticada.
+ * `Authorization: Bearer <token>` e verifica a assinatura/expiração contra
+ * a chave PÚBLICA do projeto Supabase, publicada em
+ * `{SUPABASE_URL}/auth/v1/.well-known/jwks.json`.
  *
- * `SUPABASE_JWT_SECRET` é lido uma única vez no construtor (fail-fast no
- * bootstrap da aplicação, mesmo padrão de `requireEnv` usado em
- * `supabase.provider.ts`), não a cada requisição.
+ * [DECISÃO] A primeira versão deste guard verificava localmente via HS256
+ * com um segredo compartilhado (`SUPABASE_JWT_SECRET`) — presumindo que o
+ * projeto usava assinatura simétrica legada. Rodando e2e reais (T6, review
+ * desta PBI), todo token de verdade era rejeitado: o JWKS do projeto só
+ * publica uma chave ES256 (assimétrica) — `SUPABASE_JWT_SECRET` no `.env`
+ * hoje contém o `kid` da chave, não um segredo HS256 utilizável. Corrigido
+ * para verificação via JWKS (`jose.createRemoteJWKSet`, que busca e cacheia
+ * a chave pública automaticamente, incluindo rotação) — sem round-trip ao
+ * Supabase por requisição (a chave é cacheada em memória do processo, só
+ * refeita a busca se o `kid` do token não bater com o cache), e sem exigir
+ * nenhum segredo compartilhado.
  *
  * Header ausente, token malformado, assinatura inválida e token expirado
  * resultam todos na MESMA `UnauthorizedException` genérica — o motivo
@@ -51,13 +60,14 @@ function requireEnv(config: ConfigService, key: string): string {
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  private readonly jwtSecret: string;
+  private readonly jwks: ReturnType<typeof createRemoteJWKSet>;
 
   constructor(config: ConfigService) {
-    this.jwtSecret = requireEnv(config, 'SUPABASE_JWT_SECRET');
+    const supabaseUrl = requireEnv(config, 'SUPABASE_URL');
+    this.jwks = createRemoteJWKSet(new URL(`${supabaseUrl}${JWKS_PATH}`));
   }
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const token = this.extractToken(request);
 
@@ -65,7 +75,7 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException(INVALID_TOKEN_MESSAGE);
     }
 
-    request.user = this.verifyToken(token);
+    request.user = await this.verifyToken(token);
     return true;
   }
 
@@ -78,19 +88,22 @@ export class JwtAuthGuard implements CanActivate {
     return header.slice(BEARER_PREFIX.length).trim() || undefined;
   }
 
-  private verifyToken(token: string): AuthenticatedUser {
-    const decoded = this.decodeAndVerify(token);
+  private async verifyToken(token: string): Promise<AuthenticatedUser> {
+    const payload = await this.decodeAndVerify(token);
 
-    if (typeof decoded === 'string' || !decoded.sub) {
+    if (typeof payload.sub !== 'string') {
       throw new UnauthorizedException(INVALID_TOKEN_MESSAGE);
     }
 
-    return { sub: decoded.sub };
+    return { sub: payload.sub };
   }
 
-  private decodeAndVerify(token: string): string | JwtPayload {
+  private async decodeAndVerify(token: string): Promise<JWTPayload> {
     try {
-      return verify(token, this.jwtSecret, { algorithms: ['HS256'] });
+      const { payload } = await jwtVerify(token, this.jwks, {
+        algorithms: ALLOWED_ALGORITHMS,
+      });
+      return payload;
     } catch {
       throw new UnauthorizedException(INVALID_TOKEN_MESSAGE);
     }
