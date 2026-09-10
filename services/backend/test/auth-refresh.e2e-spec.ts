@@ -29,24 +29,53 @@ const TEST_PASSWORD = 'TestPassword123!';
  *
  * Cobre os cenários e2e de `spec.md`:
  * - E2E-04 (LOGIN-06): refresh válido emite novo par de tokens.
- * - E2E-05 (LOGIN-03): reuso do refresh_token original (já rotacionado pelo
- *   teste anterior) invalida a sessão — depende da configuração "Refresh
- *   Token Rotation" estar habilitada no dashboard do projeto Supabase (ver
- *   `spec.md`, nota de arquitetura, e task T5). Se este teste falhar
- *   inesperadamente com sucesso em vez de 401, é sinal dessa configuração
- *   estar desligada — não um bug de código desta task.
+ * - E2E-05 (LOGIN-03): reuso do refresh_token original (duas gerações atrás
+ *   do token válido atual) invalida a sessão.
  *
  * Os dois `it()` rodam em sequência (Jest executa `it`s de um `describe` na
  * ordem declarada) e dependem um do outro: E2E-04 consome o refresh_token
- * original produzindo um novo par; E2E-05 reapresenta esse MESMO token
- * original (já usado) para provar a detecção de reuso.
+ * original produzindo um novo par (geração 1); E2E-05 faz uma SEGUNDA
+ * rotação (geração 1 → geração 2) e só então reapresenta o token original
+ * (geração 0) para provar a detecção de reuso.
+ *
+ * A segunda rotação é necessária por como o GoTrue (motor de auth do
+ * Supabase) decide entre "reuso tolerado" e "reuso malicioso" — não é uma
+ * questão de tempo decorrido. Para tokens v2, a tolerância depende da
+ * diferença de contador entre o token apresentado e o token válido atual
+ * (`internal/tokens/service.go` do supabase/auth):
+ *
+ *   likelyNotSavedByClient := counterDifference == 1
+ *   likelyConcurrentRefreshes := |retryStart - session.LastRefreshedAt| < reuseInterval
+ *   reuseAllowed := likelyNotSavedByClient || likelyConcurrentRefreshes || ...
+ *
+ * `counterDifference == 1` (o token apresentado é exatamente o predecessor
+ * do atual) é tolerado SEMPRE, não importa quanto tempo tenha passado — é a
+ * proteção contra perda de resposta de rede (o cliente rotaciona, não
+ * recebe/salva a resposta, reapresenta o token antigo, e o servidor
+ * reconhece que é "um passo atrás" e reenvia o par atual em vez de revogar).
+ *
+ * As duas condições de tolerância são combinadas com OR — as duas precisam
+ * ser falsas para o reuso ser rejeitado:
+ * - `likelyNotSavedByClient` (`counterDifference == 1`) — por isso a rotação
+ *   intermediária abaixo (geração 1 → geração 2) é necessária: sem ela,
+ *   `originalRefreshToken` (geração 0) estaria sempre a só 1 geração do token
+ *   válido atual, tolerado para sempre, não importa quanto se espere.
+ * - `likelyConcurrentRefreshes` (`|retryStart - session.LastRefreshedAt| <
+ *   reuseInterval`) — medido contra o último refresh bem-sucedido da SESSÃO
+ *   (a rotação intermediária), não contra o token reapresentado. Por isso
+ *   `REUSE_INTERVAL_MARGIN_MS` (> 10s, o "Refresh token reuse interval" do
+ *   dashboard) precisa ser esperado DEPOIS da rotação intermediária, não
+ *   antes — só assim as duas condições ficam falsas e o reuso é rejeitado
+ *   (mapeado para 401 por `RefreshUseCase`).
  */
+const REUSE_INTERVAL_MARGIN_MS = 12_000;
 describe('POST /auth/refresh (e2e)', () => {
   let app: INestApplication<App>;
   let moduleRef: TestingModule;
   let supabase: SupabaseClient;
   let userId: string;
   let originalRefreshToken: string;
+  let firstRotatedRefreshToken: string;
 
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
@@ -100,13 +129,29 @@ describe('POST /auth/refresh (e2e)', () => {
     expect(body.access_token).toEqual(expect.any(String));
     expect(body.refresh_token).toEqual(expect.any(String));
     expect(body.refresh_token).not.toBe(originalRefreshToken);
+
+    firstRotatedRefreshToken = body.refresh_token;
   });
 
-  it('E2E-05: reuso do refresh_token já rotacionado invalida a sessão (LOGIN-03)', async () => {
-    const response = await request(app.getHttpServer())
-      .post('/auth/refresh')
-      .send({ refresh_token: originalRefreshToken });
+  it(
+    'E2E-05: reuso do refresh_token de duas gerações atrás invalida a sessão (LOGIN-03)',
+    async () => {
+      const intermediateResponse = await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({ refresh_token: firstRotatedRefreshToken });
 
-    expect(response.status).toBe(401);
-  });
+      expect([200, 201]).toContain(intermediateResponse.status);
+
+      await new Promise((resolve) =>
+        setTimeout(resolve, REUSE_INTERVAL_MARGIN_MS),
+      );
+
+      const response = await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({ refresh_token: originalRefreshToken });
+
+      expect(response.status).toBe(401);
+    },
+    REUSE_INTERVAL_MARGIN_MS + 10_000,
+  );
 });

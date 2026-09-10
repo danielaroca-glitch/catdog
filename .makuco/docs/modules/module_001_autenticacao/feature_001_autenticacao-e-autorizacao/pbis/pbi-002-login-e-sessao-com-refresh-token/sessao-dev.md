@@ -1,6 +1,6 @@
 ---
 status: 'developing'
-stepsCompleted: [1, 2, 3]
+stepsCompleted: [1, 2, 3, 4]
 item_id: 'pbi-002'
 ado_id: ''
 titulo: 'Login e sessão com refresh token'

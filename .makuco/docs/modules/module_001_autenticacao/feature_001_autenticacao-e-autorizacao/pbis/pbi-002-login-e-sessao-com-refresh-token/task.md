@@ -106,13 +106,13 @@ T7, T4 ──→ T9
 - Skill: NONE
 
 **Done when**:
-- [ ] Usuário confirmou (em chat) que a configuração está habilitada no dashboard, OU habilitou agora
-- [ ] Se T4 (abaixo) rodar e o teste de reuso de refresh token (E2E-05) falhar inesperadamente, é sinal desta configuração estar desligada — verificar aqui antes de tratar como bug de código
+- [x] Usuário confirmou (em chat, com screenshot do dashboard) que "Detect and revoke potentially compromised refresh tokens" está habilitado e "Refresh token reuse interval" = 10s
+- [x] E2E-05 (abaixo) passa — a falha inicial não era a configuração desligada; era o teste presumir reuso tolerado por tempo, quando na verdade (tokens v2 do GoTrue) a tolerância de 1 geração (`counterDifference == 1`) é incondicional e só o reuso de 2+ gerações, combinado com o intervalo de 10s sem refresh recente da sessão, é rejeitado — ver comentário de arquitetura em `auth-refresh.e2e-spec.ts`
 
 **Tests**: none (não é código)
 **Gate**: none
 
-**Commit**: N/A (nenhuma mudança de código)
+**Commit**: N/A (nenhuma mudança de código; confirmação registrada em `STATE.md`)
 
 ---
 
@@ -155,11 +155,11 @@ T7, T4 ──→ T9
 **Done when**:
 - [x] `POST /auth/login` — E2E-01 (sucesso), E2E-02 (e-mail não confirmado), E2E-03 (credenciais inválidas) passam contra o Supabase real
 - [x] `POST /auth/refresh` — E2E-04 (refresh válido emite novo par) passa
-- [ ] E2E-05 (reuso de refresh token invalida a sessão) — **NÃO passou empiricamente**: reapresentar o `refresh_token` original (já rotacionado por E2E-04) retornou 201 (novo par de tokens) em vez de 401. Conforme previsto nesta própria task, isso não foi tratado como bug de código — é sinal de que "Refresh Token Rotation" está desabilitada no dashboard do projeto Supabase (ver T5 abaixo, que segue pendente). Nenhum workaround foi tentado no código.
+- [x] E2E-05 (reuso de refresh token invalida a sessão) — passa. A falha original (201 em vez de 401) não era "Refresh Token Rotation" desabilitada (dashboard confirmado habilitado, ver T5) nem questão de tempo isolada: o teste presumia reuso tolerado por uma janela de tempo simples, mas o GoTrue (tokens v2) tolera incondicionalmente o reuso do token imediatamente anterior (`counterDifference == 1`, proteção contra perda de resposta de rede) — só rejeita reuso de 2+ gerações atrás, e mesmo assim só fora do "Refresh token reuse interval" (10s) contado a partir do último refresh da sessão. `auth-refresh.e2e-spec.ts` reescrito com uma rotação intermediária + espera de 12s após ela, não antes do reuso.
 - [x] `@UseGuards(ThrottlerGuard)` + `@Throttle` em `/auth/login` (mesmo limite de `/auth/register`, 5/min) — E2E-06 (6ª tentativa em 60s recebe 429)
 - [x] `/auth/refresh` **não** tem rate limiting (renovação automática legítima não deve esbarrar nisso)
 
-**Status**: ✅ Concluída (com ressalva) — commit `817f5cc`. Unit: 37/37 passando (incl. os 5 novos testes de `login`/`refresh` no controller). E2E: 13/14 passando — a única falha é E2E-05, pelo motivo documentado acima (não é bug desta task). Quality gate per-task: Gate 0/1/4 PASS (eslint teve 2 erros de formatação corrigidos via `--fix`; build `nest build` limpo), Gate 3 SKIP (Docker indisponível) com checagem manual PASS (nenhuma migração/infra nova nesta task). Nenhum achado bloqueante aberto.
+**Status**: ✅ Concluída — commit `817f5cc` (endpoints) + fix de E2E-05 nesta sessão. Unit: 37/37 passando. E2E: 14/14 passando (`auth-refresh.e2e-spec.ts` corrigido). Quality gate per-task: Gate 0/1/4 PASS (eslint/prettier limpos no spec reescrito), Gate 3 SKIP (Docker indisponível) com checagem manual PASS (nenhuma migração/infra nova nesta task). Nenhum achado bloqueante aberto.
 
 **Tests**: integration
 **Gate**: full
