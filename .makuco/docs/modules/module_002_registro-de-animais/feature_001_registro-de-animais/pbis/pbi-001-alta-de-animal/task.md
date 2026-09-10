@@ -51,6 +51,8 @@ T4 → T5 → T6
 **Tests**: none — camada de schema, sem tipo de teste definido em `testing.md`; validada indiretamente pelos testes e2e de T4, depois de aplicada.
 **Gate**: none (arquivo SQL, sem código TypeScript a compilar/testar nesta task)
 
+**Status**: ✅ Done — migration aplicada manualmente pelo usuário no SQL Editor do Supabase, confirmada pelo e2e de T4 rodando contra o banco real. Commit: `70bf2ca` (bundlado com T4 por conveniência de staging).
+
 ---
 
 ### T2: `SpeciesService.exists`
@@ -74,6 +76,8 @@ T4 → T5 → T6
 **Gate**: quick
 
 **Commit**: `feat(backend): adiciona SpeciesService.exists`
+
+**Status**: ✅ Done — 3/3 testes unit passando. Commit: `da0d8f6`.
 
 ---
 
@@ -101,6 +105,8 @@ T4 → T5 → T6
 
 **Commit**: `feat(backend): adiciona CreateAnimalUseCase`
 
+**Status**: ✅ Done — 8/8 testes unit passando (DTO + use case). Commit: `785825f`.
+
 ---
 
 ### T4: `AnimalsController` + `AnimalsModule` + e2e
@@ -124,6 +130,8 @@ T4 → T5 → T6
 **Gate**: full
 
 **Commit**: `feat(backend): adiciona endpoint POST /animals`
+
+**Status**: ✅ Done — E2E-01/02/03 (5 testes) passando contra o Supabase real. Aproveitado para exportar `ProfileRoleLookup` de `AuthModule` (evita uma 3ª instância duplicada, como em `AdminModule`). Commit: `70bf2ca`.
 
 ---
 
