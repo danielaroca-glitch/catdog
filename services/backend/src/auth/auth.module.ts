@@ -10,5 +10,6 @@ import { RegisterUseCase } from './use-cases/register.use-case';
   imports: [SupabaseModule],
   controllers: [AuthController],
   providers: [ProfileRoleLookup, RegisterUseCase, LoginUseCase, RefreshUseCase],
+  exports: [ProfileRoleLookup],
 })
 export class AuthModule {}

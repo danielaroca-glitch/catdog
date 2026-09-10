@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { SupabaseModule } from './supabase/supabase.module';
 import { AuthModule } from './auth/auth.module';
 import { AdminModule } from './admin/admin.module';
+import { AnimalsModule } from './animals/animals.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { AdminModule } from './admin/admin.module';
     SupabaseModule,
     AuthModule,
     AdminModule,
+    AnimalsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
