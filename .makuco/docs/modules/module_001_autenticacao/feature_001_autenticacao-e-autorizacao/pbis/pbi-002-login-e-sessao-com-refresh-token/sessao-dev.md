@@ -14,7 +14,7 @@ ca_imutaveis: true
 spec_construido: true
 total_tasks: 9
 skills_necessarias: ['makuco-backend', 'makuco-frontend']
-proxima_fase: 'implementar'
+proxima_fase: 'fechamento'
 riscos: []
 ---
 
@@ -26,4 +26,4 @@ riscos: []
 - Fase 4 (frontend, paralela): T6 (`d6479ca`) e T7 (`e8bf7c7`) concluídas — cada uma num worktree isolado, mergeadas em `master` sem conflito (arquivos disjuntos).
 - Fase 5 (frontend, paralela): T8 (`095d0e0`) e T9 (`d16f006`) concluídas — mesmo padrão de worktree isolado, merge sem conflito.
 - **Todas as 9 tasks de `task.md` (T1-T9) estão com checkbox ✅**, mas ficou um gap real: T9 redireciona para `/login?message=...` em falha de refresh, porém nenhuma task do PBI cobre LER esse parâmetro e EXIBIR a mensagem na tela de login — `LOGIN-07` não é satisfeito ponta a ponta apesar de todas as tasks estarem marcadas. Ver ressalva em T9 no `task.md` e `LOGIN-07` na tabela de traceability do `spec.md`.
-- **Decisão pendente do usuário antes de `proxima_fase: 'fechamento'`**: adicionar uma T10 agora para fechar o gap, ou seguir para fechamento registrando isso como follow-up conhecido.
+- **Decisão do usuário (2026-09-08)**: seguir para fechamento sem fechar o gap agora — registrado em `.makuco/STATE.md` (Deferred Ideas) como follow-up de uma PBI/sessão futura.
