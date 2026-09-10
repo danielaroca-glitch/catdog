@@ -1,10 +1,7 @@
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { sign } from 'jsonwebtoken';
+import { SUPABASE_CLIENT } from '../../supabase/supabase.provider';
 import { JwtAuthGuard } from './jwt-auth.guard';
-
-const TEST_JWT_SECRET = 'test-secret-not-a-real-credential';
 
 interface FakeRequest {
   headers: Record<string, string>;
@@ -22,20 +19,17 @@ function buildExecutionContext(headers: Record<string, string> = {}) {
   return { context, request };
 }
 
-async function buildGuard(secret: string = TEST_JWT_SECRET) {
-  const config = { get: jest.fn().mockReturnValue(secret) };
+function buildDefaultGetClaims(): jest.Mock {
+  return jest.fn().mockRejectedValue(new Error('getClaims not stubbed'));
+}
+
+async function buildGuard(getClaims: jest.Mock = buildDefaultGetClaims()) {
+  const supabase = { auth: { getClaims } };
   const module = await Test.createTestingModule({
-    providers: [JwtAuthGuard, { provide: ConfigService, useValue: config }],
+    providers: [JwtAuthGuard, { provide: SUPABASE_CLIENT, useValue: supabase }],
   }).compile();
 
   return module.get(JwtAuthGuard);
-}
-
-function signToken(
-  payload: Record<string, unknown>,
-  secret: string = TEST_JWT_SECRET,
-) {
-  return sign(payload, secret, { algorithm: 'HS256' });
 }
 
 describe('JwtAuthGuard', () => {
@@ -43,7 +37,9 @@ describe('JwtAuthGuard', () => {
     const guard = await buildGuard();
     const { context } = buildExecutionContext();
 
-    expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   it('lança UnauthorizedException quando o header não segue o formato "Bearer <token>"', async () => {
@@ -52,61 +48,89 @@ describe('JwtAuthGuard', () => {
       authorization: 'Token abc123',
     });
 
-    expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
-  it('lança UnauthorizedException quando o token está malformado', async () => {
-    const guard = await buildGuard();
+  it('lança UnauthorizedException quando o token está malformado (getClaims retorna error)', async () => {
+    const getClaims = jest.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'Invalid JWT structure' },
+    });
+    const guard = await buildGuard(getClaims);
     const { context } = buildExecutionContext({
       authorization: 'Bearer not-a-jwt',
     });
 
-    expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   it('lança UnauthorizedException, sem detalhe interno na mensagem, quando a assinatura do token é inválida', async () => {
-    const guard = await buildGuard();
-    const tokenSignedWithWrongSecret = signToken(
-      { sub: 'user-1' },
-      'wrong-secret',
-    );
+    const getClaims = jest.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'Invalid JWT signature' },
+    });
+    const guard = await buildGuard(getClaims);
     const { context } = buildExecutionContext({
-      authorization: `Bearer ${tokenSignedWithWrongSecret}`,
+      authorization: 'Bearer token-com-assinatura-invalida',
     });
 
     let caughtError: unknown;
     try {
-      guard.canActivate(context);
+      await guard.canActivate(context);
     } catch (error_) {
       caughtError = error_;
     }
 
     expect(caughtError).toBeInstanceOf(UnauthorizedException);
-    expect((caughtError as Error).message).not.toMatch(/jwt|signature/i);
+    expect((caughtError as Error).message).not.toMatch(/signature/i);
   });
 
-  it('lança UnauthorizedException quando o token está expirado', async () => {
-    const guard = await buildGuard();
-    const expiredToken = signToken({
-      sub: 'user-1',
-      exp: Math.floor(Date.now() / 1000) - 60,
+  it('lança UnauthorizedException quando o token está expirado (getClaims retorna error)', async () => {
+    const getClaims = jest.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'JWT expired' },
     });
+    const guard = await buildGuard(getClaims);
     const { context } = buildExecutionContext({
-      authorization: `Bearer ${expiredToken}`,
+      authorization: 'Bearer token-expirado',
     });
 
-    expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it('lança UnauthorizedException quando getClaims rejeita a promise (ex.: JWT com estrutura inválida)', async () => {
+    const getClaims = jest
+      .fn()
+      .mockRejectedValue(new Error('Invalid JWT structure'));
+    const guard = await buildGuard(getClaims);
+    const { context } = buildExecutionContext({
+      authorization: 'Bearer token-quebrado',
+    });
+
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   it('retorna true e anexa request.user.sub quando o token é válido (AUTZ-04)', async () => {
-    const guard = await buildGuard();
-    const token = signToken({ sub: 'user-123' });
+    const getClaims = jest.fn().mockResolvedValue({
+      data: { claims: { sub: 'user-123' } },
+      error: null,
+    });
+    const guard = await buildGuard(getClaims);
     const { context, request } = buildExecutionContext({
-      authorization: `Bearer ${token}`,
+      authorization: 'Bearer token-valido',
     });
 
-    const result = guard.canActivate(context);
+    const result = await guard.canActivate(context);
 
+    expect(getClaims).toHaveBeenCalledWith('token-valido');
     expect(result).toBe(true);
     expect(request.user).toEqual({ sub: 'user-123' });
   });

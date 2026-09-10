@@ -1,11 +1,37 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  InternalServerErrorException,
+  Post,
+  Req,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { SUPABASE_CLIENT } from '../supabase/supabase.provider';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import type { AuthenticatedRequest } from './guards/jwt-auth.guard';
+import { ProfileRoleLookup, UserRole } from './profile-role.lookup';
 import { AuthenticatedSession, LoginUseCase } from './use-cases/login.use-case';
 import { RefreshedSession, RefreshUseCase } from './use-cases/refresh.use-case';
 import { RegisteredUser, RegisterUseCase } from './use-cases/register.use-case';
+
+export interface AuthenticatedUserProfile {
+  id: string;
+  email: string;
+  role: UserRole;
+}
+
+const CURRENT_USER_LOOKUP_ERROR_MESSAGE =
+  'Não foi possível concluir a operação. Tente novamente mais tarde.';
+const MISSING_AUTHENTICATED_USER_MESSAGE =
+  'Token de acesso ausente ou inválido.';
 
 /**
  * POST /auth/register (REG-01 a REG-05), POST /auth/login (LOGIN-01, LOGIN-02,
@@ -38,6 +64,8 @@ export class AuthController {
     private readonly registerUseCase: RegisterUseCase,
     private readonly loginUseCase: LoginUseCase,
     private readonly refreshUseCase: RefreshUseCase,
+    private readonly profileRoleLookup: ProfileRoleLookup,
+    @Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient,
   ) {}
 
   /**
@@ -85,5 +113,58 @@ export class AuthController {
   @Post('refresh')
   async refresh(@Body() dto: RefreshDto): Promise<RefreshedSession> {
     return this.refreshUseCase.execute(dto);
+  }
+
+  /**
+   * GET /auth/me (T5, AUTZ-04/AUTZ-05 via este endpoint — ver E2E-06).
+   *
+   * Endpoint autenticado (`JwtAuthGuard`, sem `@Roles()`) que devolve
+   * `{ id, email, role }` do usuário do token atual — usado por qualquer
+   * tela que precise reconfirmar o papel sem passar pelo login. `role` é
+   * lido de `profiles` a cada chamada via `ProfileRoleLookup` (nunca
+   * cacheado), mesma garantia de `RolesGuard` (AUTZ-03). `email` vem de
+   * `auth.admin.getUserById` — leitura administrativa pelo `SUPABASE_CLIENT`
+   * singleton, mesmo padrão já usado por `RegisterUseCase`/
+   * `ProfileRoleLookup` (não é autenticação de usuário final, `DEC-02` não
+   * se aplica).
+   *
+   * Sem token ou token inválido/malformado nunca chega aqui — `JwtAuthGuard`
+   * lança 401 antes deste método rodar.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  async me(
+    @Req() request: AuthenticatedRequest,
+  ): Promise<AuthenticatedUserProfile> {
+    const userId = this.extractUserId(request);
+    const [role, email] = await Promise.all([
+      this.profileRoleLookup.execute(userId),
+      this.fetchEmail(userId),
+    ]);
+
+    return { id: userId, email, role };
+  }
+
+  private extractUserId(request: AuthenticatedRequest): string {
+    const userId = request.user?.sub;
+
+    // Defensivo: `JwtAuthGuard` sempre popula `request.user.sub` antes deste
+    // método rodar (lança 401 caso contrário) — mesmo racional de
+    // `RolesGuard.extractUserId`, não reimplementa verificação de JWT aqui.
+    if (!userId) {
+      throw new UnauthorizedException(MISSING_AUTHENTICATED_USER_MESSAGE);
+    }
+
+    return userId;
+  }
+
+  private async fetchEmail(userId: string): Promise<string> {
+    const { data, error } = await this.supabase.auth.admin.getUserById(userId);
+
+    if (error || !data.user?.email) {
+      throw new InternalServerErrorException(CURRENT_USER_LOOKUP_ERROR_MESSAGE);
+    }
+
+    return data.user.email;
   }
 }

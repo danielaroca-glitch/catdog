@@ -1,12 +1,13 @@
 import {
   CanActivate,
   ExecutionContext,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { verify, type JwtPayload } from 'jsonwebtoken';
+import { SupabaseClient } from '@supabase/supabase-js';
 import type { Request } from 'express';
+import { SUPABASE_CLIENT } from '../../supabase/supabase.provider';
 
 const BEARER_PREFIX = 'Bearer ';
 const INVALID_TOKEN_MESSAGE = 'Token de acesso ausente ou inválido.';
@@ -19,26 +20,30 @@ export interface AuthenticatedRequest extends Request {
   user?: AuthenticatedUser;
 }
 
-function requireEnv(config: ConfigService, key: string): string {
-  const value = config.get<string>(key);
-  if (!value) {
-    throw new Error(
-      `Missing required environment variable: ${key}. Check your .env file (see .env.example).`,
-    );
-  }
-  return value;
-}
-
 /**
  * Guard de autenticação (AUTZ-04/AUTZ-05). Extrai o JWT do header
- * `Authorization: Bearer <token>` e verifica assinatura/expiração
- * LOCALMENTE — via `jsonwebtoken.verify` com `SUPABASE_JWT_SECRET` (HS256) —
- * sem round-trip ao Supabase (sem chamar `auth.getUser()`), para não pagar
- * uma chamada de rede a cada requisição autenticada.
+ * `Authorization: Bearer <token>` e verifica assinatura/expiração LOCALMENTE
+ * via `supabase.auth.getClaims(token)` — o método oficial do SDK, que valida
+ * contra o JSON Web Key Set do projeto (cacheado após a primeira busca) via
+ * WebCrypto, sem round-trip ao Supabase a cada requisição.
  *
- * `SUPABASE_JWT_SECRET` é lido uma única vez no construtor (fail-fast no
- * bootstrap da aplicação, mesmo padrão de `requireEnv` usado em
- * `supabase.provider.ts`), não a cada requisição.
+ * [NOTA T5] A implementação original desta guard (T2, commit `45b73d3`)
+ * verificava localmente com `jsonwebtoken` + `SUPABASE_JWT_SECRET` (HS256).
+ * Esse caminho nunca havia sido exercitado contra um token real emitido pelo
+ * projeto Supabase — só contra tokens fabricados no próprio teste unitário
+ * com um segredo fake. Ao escrever o e2e de T5 (que faz login de verdade
+ * para obter um `access_token` real), ficou provado que este projeto assina
+ * tokens com uma chave ASSIMÉTRICA (`alg: ES256`, JWT Signing Keys — o
+ * padrão atual do Supabase, substituindo o segredo simétrico legado). Um
+ * `jsonwebtoken.verify(token, SUPABASE_JWT_SECRET, { algorithms: ['HS256'] })`
+ * rejeita QUALQUER token real deste projeto antes mesmo de checar a
+ * assinatura — bug latente que bloqueava não só T5 como qualquer consumidor
+ * futuro desta guard (ex. T6/admin.controller). `getClaims` cobre os dois
+ * mundos: verificação local via WebCrypto quando a chave é assimétrica (este
+ * projeto), e fallback automático a uma validação equivalente a `getUser()`
+ * apenas se o projeto ainda usar segredo simétrico — sem exigir nenhuma
+ * configuração adicional aqui. `SUPABASE_JWT_SECRET`/`ConfigService`/
+ * `jsonwebtoken` deixam de ser necessários nesta guard.
  *
  * Header ausente, token malformado, assinatura inválida e token expirado
  * resultam todos na MESMA `UnauthorizedException` genérica — o motivo
@@ -51,13 +56,11 @@ function requireEnv(config: ConfigService, key: string): string {
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  private readonly jwtSecret: string;
+  constructor(
+    @Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient,
+  ) {}
 
-  constructor(config: ConfigService) {
-    this.jwtSecret = requireEnv(config, 'SUPABASE_JWT_SECRET');
-  }
-
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const token = this.extractToken(request);
 
@@ -65,7 +68,7 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException(INVALID_TOKEN_MESSAGE);
     }
 
-    request.user = this.verifyToken(token);
+    request.user = await this.verifyToken(token);
     return true;
   }
 
@@ -78,19 +81,26 @@ export class JwtAuthGuard implements CanActivate {
     return header.slice(BEARER_PREFIX.length).trim() || undefined;
   }
 
-  private verifyToken(token: string): AuthenticatedUser {
-    const decoded = this.decodeAndVerify(token);
+  private async verifyToken(token: string): Promise<AuthenticatedUser> {
+    const claims = await this.decodeAndVerify(token);
 
-    if (typeof decoded === 'string' || !decoded.sub) {
+    if (!claims?.sub) {
       throw new UnauthorizedException(INVALID_TOKEN_MESSAGE);
     }
 
-    return { sub: decoded.sub };
+    return { sub: claims.sub };
   }
 
-  private decodeAndVerify(token: string): string | JwtPayload {
+  private async decodeAndVerify(
+    token: string,
+  ): Promise<{ sub?: string } | undefined> {
     try {
-      return verify(token, this.jwtSecret, { algorithms: ['HS256'] });
+      const { data, error } = await this.supabase.auth.getClaims(token);
+      if (error) {
+        throw new UnauthorizedException(INVALID_TOKEN_MESSAGE);
+      }
+
+      return data?.claims;
     } catch {
       throw new UnauthorizedException(INVALID_TOKEN_MESSAGE);
     }
