@@ -9,6 +9,7 @@ function buildSupabaseMock() {
   return {
     auth: {
       signInWithPassword: jest.fn(),
+      signOut: jest.fn().mockResolvedValue({ error: null }),
     },
   };
 }
@@ -57,6 +58,26 @@ describe('LoginUseCase', () => {
       refresh_token: 'refresh-token',
       expires_in: 3600,
     });
+  });
+
+  it('limpa o cache local de sessão do cliente Supabase compartilhado após login bem-sucedido, sem revogar a sessão no servidor (achado #1)', async () => {
+    const supabase = buildSupabaseMock();
+    supabase.auth.signInWithPassword.mockResolvedValue({
+      data: {
+        session: {
+          access_token: 'access-token',
+          refresh_token: 'refresh-token',
+          expires_in: 3600,
+        },
+        user: { id: 'user-1' },
+      },
+      error: null,
+    });
+
+    const useCase = await buildUseCase(supabase);
+    await useCase.execute(validDto);
+
+    expect(supabase.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
   });
 
   it('lança EmailNotConfirmedException com código machine-readable quando o e-mail não está confirmado (LOGIN-02)', async () => {
