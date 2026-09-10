@@ -61,6 +61,50 @@ Docs de convenção (`<CODEBASE_DIR>`): só `testing.md` existe (`OVERVIEW.md`/`
 
 24 arquivos de código no diff (13 backend, 11 frontend); 5 arquivos de doc/config fora de escopo de achado (`STATE.md`, `sessao-dev.md`, `spec.md`, `task.md`, `.gitignore`). Pass 7 (padrões) não rodou — subagente travou por timeout; recomenda-se rodar isoladamente numa próxima rodada. Nenhum candidato foi descartado por ser não-finding além dos já listados como minor/suggestion — nenhum achado de compilação/lint (fora do escopo desta revisão, coberto pelo gate de build/lint já verde).
 
+## Rodada de revisão 2
+
+**Data**: 2026-09-08
+**Modo**: PBI · **Veredito**: APROVADO
+
+### Resumo
+
+Re-revisão da `pbi-002-login-e-sessao-com-refresh-token`, diff `3b20175..HEAD` (19 arquivos, correções dos 5 achados críticos/major da Rodada 1 + 2 achados novos desta rodada). Todos os achados `critical`/`major` de ambas as rodadas estão corrigidos e verificados. Nenhum `critical`/`major` aberto.
+
+### Passes executados
+
+1 (spec/task) e 2 (diff) pelo orquestrador. 3 (qualidade), 4 (testes), 5 (segurança), 6 (bugs), 7 (padrões) em subagentes paralelos — todos completaram desta vez (pass 7 tinha travado na rodada 1).
+
+### Rodada anterior — status dos achados críticos/major
+
+| # | Achado (rodada 1) | Status |
+| - | - | - |
+| 1 | critical — cliente Supabase singleton vazando identidade | **Corrigido.** Primeira tentativa (`signOut({scope:'local'})`) causou regressão (revogava a sessão emitida) — revertida. Fix final: cliente efêmero por chamada (`SUPABASE_AUTH_CLIENT_FACTORY`). Verificado por 3 passes independentes (3, 5, 6) contra o código-fonte do SDK + 14/14 e2e reais. |
+| 2 | major — `useRefreshScheduler` nunca montado | **Corrigido.** `<SessionRefresher/>` em `layout.tsx`, dentro do `SessionProvider`. |
+| 3 | major — mensagem de sessão expirada não exibida | **Corrigido** (e endurecido nesta rodada — ver achado novo #2 abaixo). |
+| 4 | major — race condition no cleanup do refresh | **Corrigido.** Pass 6 confirmou explicitamente: sem janela entre `cancelled=true` (síncrono no flush do React) e a continuação do `await` em voo. |
+| 5 | major — delay 0/NaN sem piso | **Corrigido em duas camadas** (validação de entrada em `session-context.tsx` + piso com guarda `NaN` em `refresh-scheduler.ts`). |
+| 6, 7 | minor — constante duplicada, DTO fraco | Corrigidos. |
+
+### Achados novos desta rodada (já corrigidos nesta mesma sessão)
+
+| # | Severidade | Arquivo | Descrição | Recomendação | Status |
+| - | - | - | - | - | - |
+| 1 | major | `services/backend/src/auth/auth.controller.ts` | O fix do achado crítico #1 tornou cada `POST /auth/refresh` mais caro (aloca um `SupabaseClient` por chamada) num endpoint sem nenhum rate limit (decisão original, mas sem controle compensatório). Achado do pass 5, **CONFIRMED**. | Rate limit generoso (30/min), acima do uso legítimo. | **Corrigido** — `@Throttle({ limit: 30, ttl: 60000 })` adicionado, verificação do orquestrador (testes automáticos, não subagente independente — ver ressalva de escopo). |
+| 2 | major | `services/frontend/src/lib/auth/refresh-scheduler.ts` | Qualquer falha (rede fora do ar, 5xx, blip) caía no mesmo `catch` que um 401 genuíno — deslogava o usuário com mensagem falsa de "sessão expirou" mesmo com a sessão válida. Achado do pass 6, **CONFIRMED**. | Discriminar falha transiente (retry) de rejeição de autenticação real (só HTTP < 500). | **Corrigido** — `SessionRefreshTransientError` + até 5 retries com 5s de intervalo antes de desistir; 3 testes novos (retry-e-sucesso por rede, retry-e-sucesso por 5xx, esgota-retries-e-desloga). Verificação do orquestrador (mesma ressalva). |
+| 3 (minor) | minor | `services/frontend/src/app/login/page.tsx` | Mensagem de sessão expirada trafegava como TEXTO LIVRE na URL (`?message=...`) — vetor de phishing (link oficial exibindo texto arbitrário sobre o campo de senha). Achado do pass 5, **CONFIRMED**. | Trafegar um código (`?reason=...`) resolvido contra allowlist fixa. | **Corrigido** — `?reason=session_expired` + `SESSION_MESSAGES_BY_REASON` allowlist; qualquer `reason` fora dela (ou `string[]`) não renderiza nada. 2 testes novos. |
+
+### Ressalva de escopo (por prazo)
+
+Os achados novos #1 e #2 acima foram corrigidos pelo próprio orquestrador (não por um subagente independente numa Rodada 3), verificados por: testes automatizados novos e dedicados a cada mecanismo, suíte completa (backend 43 unit + 14 e2e reais, frontend 66 unit) e build limpo — mas sem uma segunda revisão adversarial independente, por restrição de prazo (entrega no mesmo dia). Recomenda-se uma Rodada 3 leve (só nesses 2 arquivos) numa sessão futura, se o rigor total for necessário antes de produção.
+
+### Achados minor/suggestion remanescentes (não bloqueiam aprovação)
+
+Carry-overs da rodada 1 ainda abertos (service role key no fluxo de usuário final; ausência de log de eventos de auth; fallback silencioso de `NEXT_PUBLIC_API_URL`; type guard aceitando `NaN`/negativos; DTOs com decoradores de validação inconsistentes entre si; teto de `setTimeout` não validado contra `expires_in` anômalo; janela de corrida residual e estreita entre login concorrente e refresh em voo; acoplamento de teste a detalhe de implementação; triplicação de markup de alerta) — todos documentados, nenhum classificado como bloqueante por não atender ao critério de `major` (não são requisito não-implementado, nem falha de segurança direta, nem bug com caminho de gatilho realista em operação normal). Recomenda-se `makuco-project-research` para preencher os docs de convenção ausentes, que teriam evitado parte dos achados de padrão (pass 7).
+
+### Cobertura dos critérios de aceite (atualizada)
+
+Todos os 8 critérios (LOGIN-01 a LOGIN-08) — **Verificado**, incluindo LOGIN-06/07 (que tinham Falhado na rodada 1 por causa dos achados #2/#3, agora corrigidos).
+
 ---
 
-Próximo passo: volte ao `makuco-desenvolver` nas tasks T9 (achados #2, #3, #4, #5), T2/T3/T4 (achado #1, crítico — requer nova task ou correção direta nos use cases de login/refresh) e T1 (achado #6, #7) e rode uma nova rodada de review depois.
+Próximo passo: PBI aprovada. Seguir para `makuco-documentation` (atualização de docs pós-aprovação).
