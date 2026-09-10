@@ -7,8 +7,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CLIENT } from '../../supabase/supabase.provider';
 import { RegisterDto } from '../dto/register.dto';
 import { EmailAlreadyExistsException } from '../exceptions/email-already-exists.exception';
-
-export type UserRole = 'admin' | 'adotante';
+import { ProfileRoleLookup, UserRole } from '../profile-role.lookup';
 
 export interface RegisteredUser {
   id: string;
@@ -40,6 +39,7 @@ interface SupabaseErrorLike {
 export class RegisterUseCase {
   constructor(
     @Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient,
+    private readonly profileRoleLookup: ProfileRoleLookup,
   ) {}
 
   async execute(dto: RegisterDto): Promise<RegisteredUser> {
@@ -72,27 +72,13 @@ export class RegisterUseCase {
       throw new InternalServerErrorException(GENERIC_SIGNUP_ERROR_MESSAGE);
     }
 
-    const role = await this.fetchProfileRole(user.id);
+    const role = await this.profileRoleLookup.execute(user.id);
 
     return {
       id: user.id,
       email: user.email ?? dto.email,
       role,
     };
-  }
-
-  private async fetchProfileRole(userId: string): Promise<UserRole> {
-    const { data: profile, error } = await this.supabase
-      .from('profiles')
-      .select('role')
-      .eq('user_id', userId)
-      .single();
-
-    if (error || !profile) {
-      throw new InternalServerErrorException(GENERIC_SIGNUP_ERROR_MESSAGE);
-    }
-
-    return profile.role as UserRole;
   }
 
   private isEmailAlreadyExists(error: SupabaseErrorLike): boolean {
