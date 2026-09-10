@@ -6,11 +6,13 @@ import {
   EMAIL_NOT_CONFIRMED_CODE,
   EmailNotConfirmedException,
 } from '../exceptions/email-not-confirmed.exception';
+import { ProfileRoleLookup, UserRole } from '../profile-role.lookup';
 
 export interface AuthenticatedSession {
   access_token: string;
   refresh_token: string;
   expires_in: number;
+  role: UserRole;
 }
 
 const EMAIL_NOT_CONFIRMED_MESSAGE_PATTERN = /email.*not.*confirmed/i;
@@ -22,7 +24,7 @@ interface SupabaseErrorLike {
 }
 
 /**
- * Caso de uso de login (LOGIN-01, LOGIN-02, LOGIN-04).
+ * Caso de uso de login (LOGIN-01, LOGIN-02, LOGIN-04, AUTZ-01).
  *
  * Chama diretamente `supabase.auth.signInWithPassword()` e distingue dois
  * desfechos de erro:
@@ -36,12 +38,17 @@ interface SupabaseErrorLike {
  *   (`invalid_credentials`/"Invalid login credentials") para satisfazer
  *   LOGIN-04 sem trabalho extra de ofuscação. Propagamos sempre a MESMA
  *   mensagem fixa em PT-BR, sem revelar qual campo está errado.
+ *
+ * AUTZ-01: o retorno inclui `role`, consultado via `ProfileRoleLookup` a
+ * cada login (nunca cacheado — AUTZ-03), para o frontend redirecionar sem
+ * uma chamada extra.
  */
 @Injectable()
 export class LoginUseCase {
   constructor(
     @Inject(SUPABASE_AUTH_CLIENT_FACTORY)
     private readonly createAuthClient: () => SupabaseClient,
+    private readonly profileRoleLookup: ProfileRoleLookup,
   ) {}
 
   async execute(dto: LoginDto): Promise<AuthenticatedSession> {
@@ -65,14 +72,17 @@ export class LoginUseCase {
       throw new UnauthorizedException(GENERIC_INVALID_CREDENTIALS_MESSAGE);
     }
 
-    if (!data.session) {
+    if (!data.session || !data.user) {
       throw new UnauthorizedException(GENERIC_INVALID_CREDENTIALS_MESSAGE);
     }
+
+    const role = await this.profileRoleLookup.execute(data.user.id);
 
     return {
       access_token: data.session.access_token,
       refresh_token: data.session.refresh_token,
       expires_in: data.session.expires_in,
+      role,
     };
   }
 
