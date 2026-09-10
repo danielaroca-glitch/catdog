@@ -4,6 +4,7 @@ import { SupabaseModule } from '../supabase/supabase.module';
 import { SpeciesModule } from '../species/species.module';
 import { AnimalsController } from './animals.controller';
 import { CreateAnimalUseCase } from './use-cases/create-animal.use-case';
+import { UpdateAnimalUseCase } from './use-cases/update-animal.use-case';
 
 /**
  * `RolesGuard` (`@UseGuards` em `AnimalsController`) depende de
@@ -15,6 +16,6 @@ import { CreateAnimalUseCase } from './use-cases/create-animal.use-case';
 @Module({
   imports: [SupabaseModule, SpeciesModule, AuthModule],
   controllers: [AnimalsController],
-  providers: [CreateAnimalUseCase],
+  providers: [CreateAnimalUseCase, UpdateAnimalUseCase],
 })
 export class AnimalsModule {}
