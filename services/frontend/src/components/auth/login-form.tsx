@@ -66,9 +66,17 @@ export interface LoginFormProps {
    * sucesso, define a sessão e navega.
    */
   readonly onSubmit?: (values: LoginFormValues) => void | Promise<void>
+  /**
+   * Mensagem propagada via query string `?message=` (achado #3 do review da
+   * pbi-002) — hoje usada pelo redirect de `refresh-scheduler.ts` quando a
+   * renovação automática de sessão falha (RN-03). Renderizada acima do
+   * formulário, no mesmo padrão visual (`Alert`/`AlertDescription`,
+   * `aria-live="polite"`) já usado abaixo para os demais estados.
+   */
+  readonly sessionMessage?: string
 }
 
-export function LoginForm({ onSubmit }: LoginFormProps) {
+export function LoginForm({ onSubmit, sessionMessage }: LoginFormProps) {
   const router = useRouter()
   const { setSession } = useSession()
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -197,6 +205,15 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {sessionMessage && (
+          <div className="mb-4">
+            <Alert aria-live="polite" data-testid="login-session-message-alert">
+              <AlertDescription data-testid="login-session-message">
+                {sessionMessage}
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
         {isEmailNotConfirmed && (
           <div className="mb-4">
             <Alert aria-live="polite" data-testid="login-email-not-confirmed-alert">
