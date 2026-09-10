@@ -3,6 +3,23 @@ import userEvent from "@testing-library/user-event"
 
 import { LoginForm } from "./login-form"
 
+// LoginForm usa `useRouter` (next/navigation) e `useSession`
+// (SessionContext) para o fluxo de sucesso do submit à API (T8). Nestes
+// testes o `onSubmit` é sempre fornecido — nem o router nem a sessão chegam
+// a ser usados de fato — mas os hooks ainda precisam de um contexto válido
+// para não lançar ao renderizar (mesmo padrão de register-form.test.tsx).
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn() }),
+}))
+
+jest.mock("../../lib/auth/session-context", () => ({
+  useSession: () => ({
+    session: null,
+    setSession: jest.fn(),
+    clearSession: jest.fn(),
+  }),
+}))
+
 describe("LoginForm (T6)", () => {
   it("desabilita o submit enquanto e-mail ou senha estiverem vazios", async () => {
     const user = userEvent.setup()

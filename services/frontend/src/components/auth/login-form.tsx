@@ -1,11 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2 } from "lucide-react"
 import { Controller, useForm, useWatch } from "react-hook-form"
 import * as z from "zod"
 
+import { ApiError, EMAIL_NOT_CONFIRMED_CODE, loginUser } from "@/lib/api/auth"
+import { useSession } from "@/lib/auth/session-context"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -18,8 +22,28 @@ import {
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
+// Redirecionamento real por papel é da pbi-003 (ver EXPERIENCE.md: "após o
+// sucesso, o redirecionamento por papel é tratado na PBI 3") — "/" é o
+// destino placeholder desta task.
+const HOME_ROUTE = "/"
+
+const HTTP_STATUS_UNAUTHORIZED = 401
+const HTTP_STATUS_FORBIDDEN = 403
+
+// EXPERIENCE.md (Voz e Tom): "E-mail ou senha incorretos." — nunca indica
+// qual campo está errado (CA-04). Texto fixo no frontend (independente do
+// texto retornado pelo backend), mesmo padrão de RegisterForm para 409.
+const INVALID_CREDENTIALS_MESSAGE = "E-mail ou senha incorretos."
 const GENERIC_SUBMIT_ERROR_MESSAGE =
   "Não foi possível entrar. Tente novamente mais tarde."
+// EXPERIENCE.md (Voz e Tom): "Confirme seu e-mail para continuar."
+const EMAIL_NOT_CONFIRMED_MESSAGE = "Confirme seu e-mail para continuar."
+
+// EXPERIENCE.md (Padrões de Componentes): "Desabilitado com contagem
+// regressiva por um cooldown curto após cada envio, para evitar reenvio
+// abusivo." Mesmo valor e padrão de interação adotados em
+// `app/registro/confirmacao-pendente/page.tsx` (pbi-001).
+const RESEND_COOLDOWN_SECONDS = 30
 
 // LOGIN-05: espelha 1:1 o LoginDto do backend
 // (services/backend/src/auth/dto/login.dto.ts) — email (@IsEmail) e senha
@@ -33,18 +57,29 @@ export type LoginFormValues = z.infer<typeof loginFormSchema>
 
 export interface LoginFormProps {
   /**
-   * Callback chamado com os dados validados no submit. A integração com
-   * `POST /auth/login` (sucesso, e-mail não confirmado, credenciais
-   * inválidas) é responsabilidade da T8 (`lib/api/auth.ts` + wiring aqui);
-   * esta task cobre apenas o formulário e seus estados de envio/erro
-   * genérico, testáveis sem depender de `fetch` (mesmo padrão de
-   * `RegisterForm`).
+   * Callback opcional chamado com os dados validados no submit, no lugar da
+   * integração padrão com a API de login (`loginUser`, ver
+   * `src/lib/api/auth.ts`). Usado principalmente em testes para observar o
+   * submit sem depender de `fetch` (mesmo padrão de `RegisterForm`). Quando
+   * omitido, o formulário chama `POST /auth/login`, trata os três desfechos
+   * (sucesso, e-mail não confirmado, credenciais inválidas) e, em caso de
+   * sucesso, define a sessão e navega.
    */
   readonly onSubmit?: (values: LoginFormValues) => void | Promise<void>
 }
 
 export function LoginForm({ onSubmit }: LoginFormProps) {
+  const router = useRouter()
+  const { setSession } = useSession()
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [isEmailNotConfirmed, setIsEmailNotConfirmed] = useState(false)
+  const [resendCooldownSeconds, setResendCooldownSeconds] = useState(0)
+  // Um único `setInterval` por clique (guardado em ref, não em estado) evita
+  // recriar o timer a cada segundo — mesmo padrão de
+  // `app/registro/confirmacao-pendente/page.tsx`.
+  const resendIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null
+  )
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
     mode: "onBlur",
@@ -60,10 +95,76 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
   // EXPERIENCE.md (Padrões de Componentes): "Submit desabilitado enquanto
   // algum campo está vazio."
   const isSubmitDisabled = isSubmitting || !emailValue || !senhaValue
+  const isResendDisabled = resendCooldownSeconds > 0
 
-  async function handleValidSubmit(values: LoginFormValues) {
-    setSubmitError(null)
+  useEffect(() => {
+    return () => {
+      if (resendIntervalRef.current) {
+        clearInterval(resendIntervalRef.current)
+      }
+    }
+  }, [])
 
+  function handleResendClick() {
+    // [NOTA] Mesma ressalva de `confirmacao-pendente/page.tsx` (REG-09): o
+    // backend ainda não expõe um endpoint de reenvio do e-mail de
+    // confirmação. Este clique inicia apenas o cooldown visual, prevenindo
+    // reenvio abusivo conforme EXPERIENCE.md; nenhuma chamada real de API é
+    // feita ainda.
+    setResendCooldownSeconds(RESEND_COOLDOWN_SECONDS)
+
+    if (resendIntervalRef.current) {
+      clearInterval(resendIntervalRef.current)
+    }
+
+    resendIntervalRef.current = setInterval(() => {
+      setResendCooldownSeconds((current) => {
+        if (current <= 1) {
+          if (resendIntervalRef.current) {
+            clearInterval(resendIntervalRef.current)
+            resendIntervalRef.current = null
+          }
+          return 0
+        }
+        return current - 1
+      })
+    }, 1000)
+  }
+
+  function isEmailNotConfirmedError(error: unknown): boolean {
+    return (
+      error instanceof ApiError &&
+      error.status === HTTP_STATUS_FORBIDDEN &&
+      error.code === EMAIL_NOT_CONFIRMED_CODE
+    )
+  }
+
+  function handleLoginError(error: unknown) {
+    if (isEmailNotConfirmedError(error)) {
+      setIsEmailNotConfirmed(true)
+      return
+    }
+
+    if (error instanceof ApiError && error.status === HTTP_STATUS_UNAUTHORIZED) {
+      setSubmitError(INVALID_CREDENTIALS_MESSAGE)
+      return
+    }
+
+    setSubmitError(GENERIC_SUBMIT_ERROR_MESSAGE)
+  }
+
+  async function submitViaLoginApi(values: LoginFormValues) {
+    try {
+      const authenticatedSession = await loginUser(values)
+      setSession(authenticatedSession)
+      // TODO(pbi-003): redirecionamento real por papel
+      router.push(HOME_ROUTE)
+    } catch (error) {
+      handleLoginError(error)
+    }
+  }
+
+  async function submitViaCallback(values: LoginFormValues) {
     if (!onSubmit) {
       return
     }
@@ -75,6 +176,18 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
     }
   }
 
+  async function handleValidSubmit(values: LoginFormValues) {
+    setSubmitError(null)
+    setIsEmailNotConfirmed(false)
+
+    if (onSubmit) {
+      await submitViaCallback(values)
+      return
+    }
+
+    await submitViaLoginApi(values)
+  }
+
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
@@ -84,6 +197,26 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {isEmailNotConfirmed && (
+          <div className="mb-4">
+            <Alert aria-live="polite" data-testid="login-email-not-confirmed-alert">
+              <AlertDescription data-testid="login-email-not-confirmed-message">
+                {EMAIL_NOT_CONFIRMED_MESSAGE}
+              </AlertDescription>
+              <Button
+                type="button"
+                className="mt-2 w-full"
+                disabled={isResendDisabled}
+                onClick={handleResendClick}
+                data-testid="resend-confirmation-button"
+              >
+                {isResendDisabled
+                  ? `Reenviar confirmação (${resendCooldownSeconds}s)`
+                  : "Reenviar confirmação"}
+              </Button>
+            </Alert>
+          </div>
+        )}
         <form
           id="login-form"
           noValidate
