@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { UnauthorizedException } from '@nestjs/common';
-import { SUPABASE_CLIENT } from '../../supabase/supabase.provider';
+import { SUPABASE_AUTH_CLIENT_FACTORY } from '../../supabase/supabase.provider';
 import { LoginDto } from '../dto/login.dto';
 import { EmailNotConfirmedException } from '../exceptions/email-not-confirmed.exception';
 import { LoginUseCase } from './login.use-case';
@@ -9,17 +9,20 @@ function buildSupabaseMock() {
   return {
     auth: {
       signInWithPassword: jest.fn(),
-      signOut: jest.fn().mockResolvedValue({ error: null }),
     },
   };
 }
 
 async function buildUseCase(supabase: unknown) {
+  const createAuthClient = jest.fn().mockReturnValue(supabase);
   const module = await Test.createTestingModule({
-    providers: [LoginUseCase, { provide: SUPABASE_CLIENT, useValue: supabase }],
+    providers: [
+      LoginUseCase,
+      { provide: SUPABASE_AUTH_CLIENT_FACTORY, useValue: createAuthClient },
+    ],
   }).compile();
 
-  return module.get(LoginUseCase);
+  return { useCase: module.get(LoginUseCase), createAuthClient };
 }
 
 describe('LoginUseCase', () => {
@@ -46,7 +49,7 @@ describe('LoginUseCase', () => {
       error: null,
     });
 
-    const useCase = await buildUseCase(supabase);
+    const { useCase } = await buildUseCase(supabase);
     const result = await useCase.execute(validDto);
 
     expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({
@@ -60,7 +63,7 @@ describe('LoginUseCase', () => {
     });
   });
 
-  it('limpa o cache local de sessão do cliente Supabase compartilhado após login bem-sucedido, sem revogar a sessão no servidor (achado #1)', async () => {
+  it('usa um cliente Supabase efêmero (fábrica), nunca um cliente compartilhado, por chamada (achado #1 crítico)', async () => {
     const supabase = buildSupabaseMock();
     supabase.auth.signInWithPassword.mockResolvedValue({
       data: {
@@ -74,10 +77,11 @@ describe('LoginUseCase', () => {
       error: null,
     });
 
-    const useCase = await buildUseCase(supabase);
+    const { useCase, createAuthClient } = await buildUseCase(supabase);
+    await useCase.execute(validDto);
     await useCase.execute(validDto);
 
-    expect(supabase.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+    expect(createAuthClient).toHaveBeenCalledTimes(2);
   });
 
   it('lança EmailNotConfirmedException com código machine-readable quando o e-mail não está confirmado (LOGIN-02)', async () => {
@@ -90,7 +94,7 @@ describe('LoginUseCase', () => {
       },
     });
 
-    const useCase = await buildUseCase(supabase);
+    const { useCase } = await buildUseCase(supabase);
 
     await expect(useCase.execute(validDto)).rejects.toBeInstanceOf(
       EmailNotConfirmedException,
@@ -116,7 +120,7 @@ describe('LoginUseCase', () => {
       },
     });
 
-    const useCase = await buildUseCase(supabase);
+    const { useCase } = await buildUseCase(supabase);
 
     let caughtError: unknown;
     try {
@@ -139,7 +143,7 @@ describe('LoginUseCase', () => {
       },
     });
 
-    const useCase = await buildUseCase(supabase);
+    const { useCase } = await buildUseCase(supabase);
 
     let caughtError: unknown;
     try {
@@ -159,7 +163,7 @@ describe('LoginUseCase', () => {
       error: null,
     });
 
-    const useCase = await buildUseCase(supabase);
+    const { useCase } = await buildUseCase(supabase);
 
     await expect(useCase.execute(validDto)).rejects.toBeInstanceOf(
       UnauthorizedException,

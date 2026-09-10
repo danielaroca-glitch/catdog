@@ -1,6 +1,6 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { SUPABASE_CLIENT } from '../../supabase/supabase.provider';
+import { SUPABASE_AUTH_CLIENT_FACTORY } from '../../supabase/supabase.provider';
 import { LoginDto } from '../dto/login.dto';
 import {
   EMAIL_NOT_CONFIRMED_CODE,
@@ -40,11 +40,19 @@ interface SupabaseErrorLike {
 @Injectable()
 export class LoginUseCase {
   constructor(
-    @Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient,
+    @Inject(SUPABASE_AUTH_CLIENT_FACTORY)
+    private readonly createAuthClient: () => SupabaseClient,
   ) {}
 
   async execute(dto: LoginDto): Promise<AuthenticatedSession> {
-    const { data, error } = await this.supabase.auth.signInWithPassword({
+    // Cliente efêmero, um por chamada — nunca o singleton SUPABASE_CLIENT.
+    // Ver `supabaseAuthClientFactoryProvider` para o porquê (achado #1
+    // crítico, review rodada 1 do pbi-002: reusar o singleton vaza a
+    // identidade deste usuário para chamadas REST subsequentes do mesmo
+    // cliente).
+    const supabase = this.createAuthClient();
+
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: dto.email,
       password: dto.senha,
     });
@@ -61,22 +69,11 @@ export class LoginUseCase {
       throw new UnauthorizedException(GENERIC_INVALID_CREDENTIALS_MESSAGE);
     }
 
-    const session = {
+    return {
       access_token: data.session.access_token,
       refresh_token: data.session.refresh_token,
       expires_in: data.session.expires_in,
     };
-
-    // SUPABASE_CLIENT é singleton (sem Scope.REQUEST) criado com a service
-    // role key. `persistSession: false` não impede o GoTrueClient de cachear
-    // a sessão em memória após signInWithPassword — o cliente passaria a
-    // usar o JWT deste usuário em chamadas REST subsequentes do MESMO
-    // singleton. `signOut({ scope: 'local' })` limpa esse cache local (volta
-    // a resolver para a service role key) SEM revogar a sessão do usuário no
-    // servidor Supabase; os tokens já extraídos acima continuam válidos.
-    await this.supabase.auth.signOut({ scope: 'local' });
-
-    return session;
   }
 
   private isEmailNotConfirmed(error: SupabaseErrorLike): boolean {

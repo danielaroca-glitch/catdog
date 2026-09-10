@@ -1,6 +1,6 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { SUPABASE_CLIENT } from '../../supabase/supabase.provider';
+import { SUPABASE_AUTH_CLIENT_FACTORY } from '../../supabase/supabase.provider';
 import { RefreshDto } from '../dto/refresh.dto';
 
 export interface RefreshedSession {
@@ -30,11 +30,16 @@ const GENERIC_INVALID_SESSION_MESSAGE = 'Sessão inválida ou expirada.';
 @Injectable()
 export class RefreshUseCase {
   constructor(
-    @Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient,
+    @Inject(SUPABASE_AUTH_CLIENT_FACTORY)
+    private readonly createAuthClient: () => SupabaseClient,
   ) {}
 
   async execute(dto: RefreshDto): Promise<RefreshedSession> {
-    const { data, error } = await this.supabase.auth.refreshSession({
+    // Cliente efêmero, um por chamada — ver comentário equivalente em
+    // LoginUseCase.execute (achado #1 crítico, review rodada 1 do pbi-002).
+    const supabase = this.createAuthClient();
+
+    const { data, error } = await supabase.auth.refreshSession({
       refresh_token: dto.refresh_token,
     });
 
@@ -42,18 +47,10 @@ export class RefreshUseCase {
       throw new UnauthorizedException(GENERIC_INVALID_SESSION_MESSAGE);
     }
 
-    const session = {
+    return {
       access_token: data.session.access_token,
       refresh_token: data.session.refresh_token,
       expires_in: data.session.expires_in,
     };
-
-    // Ver comentário equivalente em LoginUseCase.execute: limpa o cache local
-    // de sessão do cliente Supabase singleton para não vazar o JWT deste
-    // usuário para chamadas REST subsequentes do mesmo cliente, sem revogar
-    // a sessão de verdade no servidor.
-    await this.supabase.auth.signOut({ scope: 'local' });
-
-    return session;
   }
 }

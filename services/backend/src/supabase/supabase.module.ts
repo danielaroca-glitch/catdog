@@ -1,10 +1,15 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { supabaseClientProvider, SUPABASE_CLIENT } from './supabase.provider';
+import {
+  supabaseClientProvider,
+  supabaseAuthClientFactoryProvider,
+  SUPABASE_CLIENT,
+  SUPABASE_AUTH_CLIENT_FACTORY,
+} from './supabase.provider';
 
 @Module({
   imports: [ConfigModule],
-  providers: [supabaseClientProvider],
-  exports: [SUPABASE_CLIENT],
+  providers: [supabaseClientProvider, supabaseAuthClientFactoryProvider],
+  exports: [SUPABASE_CLIENT, SUPABASE_AUTH_CLIENT_FACTORY],
 })
 export class SupabaseModule {}
