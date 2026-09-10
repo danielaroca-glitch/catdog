@@ -39,7 +39,6 @@
 
 ## Deferred Ideas (fora de escopo desta feature)
 
-- **Exibir a mensagem de sessão expirada na tela de login (LOGIN-07 incompleto)** — `pbi-002`/T9 (`d16f006`) redireciona para `/login?message=Sua+sess%C3%A3o+expirou...` quando o refresh automático falha, mas nenhuma task cobriu ler esse query param e renderizá-lo — `login-form.tsx`/`app/login/page.tsx` hoje ignoram `message`. Resultado: o usuário é deslogado e redirecionado em silêncio, sem ver o aviso. Decisão do usuário (2026-09-08): seguir para fechamento do `pbi-002` sem fechar este gap agora; vira task de uma PBI/sessão futura — ler `searchParams.message` em `app/login/page.tsx` (ou `login-form.tsx`) e renderizar via `Alert`, mesmo padrão já usado para os outros estados do formulário.
 - Recuperação de senha ("esqueci minha senha") — vira PBI futuro dentro do módulo de Autenticação.
 - Criação de conta admin pela própria plataforma (fluxo de convite) — hoje é seed manual, fora de escopo.
 - E-mails transacionais customizados via Resend — a feature de Autenticação usa o fluxo nativo do Supabase para o e-mail de confirmação; Resend fica reservado para features futuras que precisem de e-mail com marca própria.
