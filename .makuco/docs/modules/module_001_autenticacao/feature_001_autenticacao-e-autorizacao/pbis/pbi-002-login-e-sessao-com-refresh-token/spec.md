@@ -74,20 +74,22 @@ Surgidos ao escrever esta spec — não presentes nas CA originais.
 
 | Requirement ID | Source | Phase | Status |
 | --- | --- | --- | --- |
-| LOGIN-01 | CA-01 (original) | Tasks | Pending |
-| LOGIN-02 | CA-02 (original) | Tasks | Pending |
-| LOGIN-03 | CA-03 (original) | Tasks | Pending |
-| LOGIN-04 | CA-04 (original) | Tasks | Pending |
-| LOGIN-05 | Edge case | Tasks | Pending |
-| LOGIN-06 | Edge case | Tasks | Pending |
-| LOGIN-07 | Edge case | Tasks | Pending |
-| LOGIN-08 | Edge case | Tasks | Pending |
+| LOGIN-01 | CA-01 (original) | Tasks | Implementing — backend Verified (E2E-01, T4); wiring do frontend pendente (T8) |
+| LOGIN-02 | CA-02 (original) | Tasks | Implementing — backend Verified (E2E-02, T4); alerta de reenvio no frontend pendente (T8) |
+| LOGIN-03 | CA-03 (original) | Tasks | Verified — E2E-05 (T4, corrigido nesta sessão) |
+| LOGIN-04 | CA-04 (original) | Tasks | Implementing — backend Verified (E2E-03, T4); superfície no frontend pendente (T8) |
+| LOGIN-05 | Edge case | Tasks | Verified — DTO (T1, unit) + validação client-side (T6, unit), per "Fora do e2e" acima |
+| LOGIN-06 | Edge case | Tasks | Implementing — backend Verified (E2E-04, T4); scheduler de renovação no frontend pendente (T9) |
+| LOGIN-07 | Edge case | Tasks | Pending — depende de T9 (ainda não iniciada); T7 entrega só o armazenamento de sessão que T9 vai consumir |
+| LOGIN-08 | Edge case | Tasks | Verified — E2E-06 (T4) |
 
 **ID format:** `LOGIN-NN`
 
 **Status values:** Pending → In Tasks → Implementing → Verified
 
-**Coverage:** 8 total, 8 a mapear em `task.md`, 0 unmapped.
+**Coverage:** 8 total, 8 mapeados em `task.md`, 0 unmapped.
+
+**Nota**: esta tabela estava desatualizada (todo "Pending") desde antes de T1-T5 aterrarem — corrigida nesta sessão a partir do estado real do código (testes passando em `master`), não re-derivada às cegas. Doravante, manter a atualização por task, per `implement.md` step 10.
 
 ---
 

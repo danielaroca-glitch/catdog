@@ -180,10 +180,12 @@ T7, T4 ──→ T9
 - Skill: `makuco-frontend`
 
 **Done when**:
-- [ ] Campos email/senha; submit desabilitado enquanto algum campo está vazio (per `EXPERIENCE.md`)
-- [ ] Botão "Entrar" mostra spinner e desabilita durante o envio
-- [ ] Foco automático no campo email ao carregar (per `EXPERIENCE.md` — Primitivas de Interação)
-- [ ] Labels associados aos campos; erro anunciado via `aria-live="polite"` (Piso de Acessibilidade)
+- [x] Campos email/senha; submit desabilitado enquanto algum campo está vazio (per `EXPERIENCE.md`)
+- [x] Botão "Entrar" mostra spinner e desabilita durante o envio
+- [x] Foco automático no campo email ao carregar (per `EXPERIENCE.md` — Primitivas de Interação)
+- [x] Labels associados aos campos; erro anunciado via `aria-live="polite"` (Piso de Acessibilidade)
+
+**Status**: ✅ Concluída — commit `d6479ca`. `LoginForm` segue o padrão de `register-form.tsx` (react-hook-form + `Controller`/`Field`/`FieldLabel`/`FieldError` do shadcn, zod schema espelhando `LoginDto`); aceita `onSubmit` opcional (testável sem `fetch`), integração real com `POST /auth/login` fica para T8. Rota `/login` é página fina, mesmo padrão de `confirmacao-pendente/page.tsx`. Nenhum token visual novo — reutiliza `Card`/`Button`/`Field*`/`text-destructive` já existentes. Unit: 4 novos testes (20/20 na suíte do frontend). Quality gate per-task: Gate 0/1/3/4 PASS.
 
 **Tests**: unit
 **Gate**: quick
@@ -204,8 +206,10 @@ T7, T4 ──→ T9
 - Skill: `makuco-frontend`
 
 **Done when**:
-- [ ] `setSession({ access_token, refresh_token, expires_in })` e `clearSession()` funcionam
-- [ ] Nenhuma chamada a `localStorage`/`sessionStorage` — dado vive só em memória do contexto (perde-se em reload de página; aceitável para o escopo desta PBI, sem "lembrar sessão" declarado em nenhum CA)
+- [x] `setSession({ access_token, refresh_token, expires_in })` e `clearSession()` funcionam
+- [x] Nenhuma chamada a `localStorage`/`sessionStorage` — dado vive só em memória do contexto (perde-se em reload de página; aceitável para o escopo desta PBI, sem "lembrar sessão" declarado em nenhum CA)
+
+**Status**: ✅ Concluída — commit `e8bf7c7`. `SessionProvider`/`useSession` (Context API + `useState`/`useCallback`/`useMemo`), shape de entrada espelha 1:1 `AuthenticatedSession`/`RefreshedSession` do backend para reuso direto por T8/T9; `useSession` fora do provider lança erro explícito. Unit: 7 novos testes (23/23 na suíte do frontend). Quality gate per-task: Gate 0/1/3/4 PASS (Gate 3 via `complexity-check` MCP/Docker, agora disponível).
 
 **Tests**: unit
 **Gate**: quick
