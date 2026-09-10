@@ -31,13 +31,13 @@ pbis:
     tasks:
       task-14: done
   login-e-sessao-com-refresh-token:
-    current_stage: "7. Review"
+    current_stage: "9. Deploy & Documentação"
     business: pending
     technical: pending
     spec: pending
     plan: pending
     review: approved
-    documentation: pending
+    documentation: done
     tasks:
       task-01: done
       task-02: done
