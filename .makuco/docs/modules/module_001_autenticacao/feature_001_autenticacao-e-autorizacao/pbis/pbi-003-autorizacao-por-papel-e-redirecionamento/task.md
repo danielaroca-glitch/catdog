@@ -50,9 +50,11 @@ T4 ──→ T7 ──→ T8 ──→ T9
 - Skill: `makuco-backend`
 
 **Done when**:
-- [ ] `ProfileRoleLookup.execute(userId)` retorna o `role` (`admin` | `adotante`) lido de `profiles`
-- [ ] Lança `InternalServerErrorException` genérica se a linha não existir (mesmo comportamento que `RegisterUseCase` já tinha)
-- [ ] `RegisterUseCase` usa o provider extraído; nenhum teste existente de `register.use-case.spec.ts` quebra
+- [x] `ProfileRoleLookup.execute(userId)` retorna o `role` (`admin` | `adotante`) lido de `profiles`
+- [x] Lança `InternalServerErrorException` genérica se a linha não existir (mesmo comportamento que `RegisterUseCase` já tinha)
+- [x] `RegisterUseCase` usa o provider extraído; nenhum teste existente de `register.use-case.spec.ts` quebra
+
+**Status**: ✅ Concluída — commit `76ce61c`. `UserRole` movido para `profile-role.lookup.ts` (mais fundacional). Quality gate per-task: Gate 0/1/3/4 PASS.
 
 **Tests**: unit
 **Gate**: quick
@@ -73,10 +75,12 @@ T4 ──→ T7 ──→ T8 ──→ T9
 - Skill: `makuco-backend`
 
 **Done when**:
-- [ ] Sem header `Authorization` → `UnauthorizedException` (401)
-- [ ] Token malformado/assinatura inválida → `UnauthorizedException` (401), sem detalhe interno na mensagem
-- [ ] Token expirado → `UnauthorizedException` (401)
-- [ ] Token válido → `canActivate` retorna `true`, `request.user.sub` = `sub` do payload do JWT
+- [x] Sem header `Authorization` → `UnauthorizedException` (401)
+- [x] Token malformado/assinatura inválida → `UnauthorizedException` (401), sem detalhe interno na mensagem
+- [x] Token expirado → `UnauthorizedException` (401)
+- [x] Token válido → `canActivate` retorna `true`, `request.user.sub` = `sub` do payload do JWT
+
+**Status**: ✅ Concluída — commit `45b73d3`. `SUPABASE_JWT_SECRET` lido uma vez no construtor (fail-fast, mesmo padrão de `supabase.provider.ts`). Quality gate per-task: Gate 0/1/3/4 PASS. Nota: `npm audit` acusa 4 vulnerabilidades high pré-existentes na cadeia `multer`/`@nestjs` (transitiva, não relacionada a esta task) — registrado em `.makuco/STATE.md`, não corrigido aqui (fora de escopo).
 
 **Tests**: unit
 **Gate**: quick
