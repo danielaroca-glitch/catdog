@@ -61,4 +61,53 @@ describe('LoginDto', () => {
     const senhaError = errors.find((error) => error.property === 'senha');
     expect(senhaError).toBeDefined();
   });
+
+  it('deve rejeitar quando a senha não é uma string (achado #7)', async () => {
+    const dto = plainToInstance(LoginDto, {
+      ...validPayload,
+      senha: 12345678,
+    });
+
+    const errors = await validate(dto);
+
+    const senhaError = errors.find((error) => error.property === 'senha');
+    expect(senhaError).toBeDefined();
+  });
+
+  it('deve rejeitar quando a senha excede 128 caracteres (achado #7)', async () => {
+    const dto = plainToInstance(LoginDto, {
+      ...validPayload,
+      senha: 'a'.repeat(129),
+    });
+
+    const errors = await validate(dto);
+
+    const senhaError = errors.find((error) => error.property === 'senha');
+    expect(senhaError).toBeDefined();
+  });
+
+  it('deve aceitar senha com exatamente 128 caracteres (achado #7)', async () => {
+    const dto = plainToInstance(LoginDto, {
+      ...validPayload,
+      senha: 'a'.repeat(128),
+    });
+
+    const errors = await validate(dto);
+
+    const senhaError = errors.find((error) => error.property === 'senha');
+    expect(senhaError).toBeUndefined();
+  });
+
+  it('deve rejeitar quando o e-mail excede 255 caracteres (achado #7)', async () => {
+    const longLocalPart = 'a'.repeat(250);
+    const dto = plainToInstance(LoginDto, {
+      ...validPayload,
+      email: `${longLocalPart}@example.com`,
+    });
+
+    const errors = await validate(dto);
+
+    const emailError = errors.find((error) => error.property === 'email');
+    expect(emailError).toBeDefined();
+  });
 });
