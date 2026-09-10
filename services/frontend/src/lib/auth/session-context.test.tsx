@@ -152,4 +152,54 @@ describe("SessionProvider / useSession", () => {
       "no-session"
     )
   })
+
+  // Achado #5 (review pbi-002): `expires_in` chega direto da resposta da API
+  // (login/refresh) sem validação de runtime. Um valor <= 0/NaN/não-finito
+  // vira `expires_at` inválido, e `refresh-scheduler` agenda com delay <= 0
+  // — loop apertado de `POST /auth/refresh` (único endpoint de auth sem
+  // rate limit, de propósito). `setSession` deve rejeitar esses valores.
+  describe("expires_in validation", () => {
+    it.each([
+      ["zero", 0],
+      ["negativo", -10],
+      ["NaN", NaN],
+      ["Infinity", Infinity],
+      ["-Infinity", -Infinity],
+    ])("throws when expires_in is %s (%p)", (_label, expiresIn) => {
+      const { result } = renderHook(() => useSession(), { wrapper })
+
+      expect(() => {
+        act(() => {
+          result.current.setSession({
+            access_token: "access-token-1",
+            refresh_token: "refresh-token-1",
+            expires_in: expiresIn,
+          })
+        })
+      }).toThrow()
+
+      expect(result.current.session).toBeNull()
+    })
+
+    it("accepts a small but positive, finite expires_in", () => {
+      jest.spyOn(Date, "now").mockReturnValue(1_000_000)
+      const { result } = renderHook(() => useSession(), { wrapper })
+
+      act(() => {
+        result.current.setSession({
+          access_token: "access-token-1",
+          refresh_token: "refresh-token-1",
+          expires_in: 1,
+        })
+      })
+
+      expect(result.current.session).toEqual({
+        access_token: "access-token-1",
+        refresh_token: "refresh-token-1",
+        expires_at: 1_000_000 + 1000,
+      })
+
+      jest.restoreAllMocks()
+    })
+  })
 })

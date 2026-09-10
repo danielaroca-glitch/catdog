@@ -94,4 +94,30 @@ describe("LoginForm (T6)", () => {
       "Não foi possível entrar. Tente novamente mais tarde."
     )
   })
+
+  // Achado #3 (review pbi-002): mensagem propagada via `?message=` (ex.:
+  // sessão expirada, redirecionada por `refresh-scheduler.ts`) precisa
+  // aparecer acima do formulário quando fornecida.
+  it("shows the sessionMessage prop above the form, announced via aria-live=polite", () => {
+    render(
+      <LoginForm
+        onSubmit={jest.fn()}
+        sessionMessage="Sua sessão expirou. Entre novamente."
+      />
+    )
+
+    const alert = screen.getByTestId("login-session-message-alert")
+    expect(alert).toHaveAttribute("aria-live", "polite")
+    expect(screen.getByTestId("login-session-message")).toHaveTextContent(
+      "Sua sessão expirou. Entre novamente."
+    )
+  })
+
+  it("does not show the session-message alert when sessionMessage is not provided", () => {
+    render(<LoginForm onSubmit={jest.fn()} />)
+
+    expect(
+      screen.queryByTestId("login-session-message-alert")
+    ).not.toBeInTheDocument()
+  })
 })

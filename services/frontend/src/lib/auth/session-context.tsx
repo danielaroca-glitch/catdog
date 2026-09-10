@@ -54,6 +54,10 @@ function expiresAtFromNow(expiresInSeconds: number): number {
   return Date.now() + expiresInSeconds * MILLISECONDS_PER_SECOND
 }
 
+function isValidExpiresIn(expiresInSeconds: number): boolean {
+  return Number.isFinite(expiresInSeconds) && expiresInSeconds > 0
+}
+
 export interface SessionProviderProps {
   readonly children: ReactNode
 }
@@ -62,6 +66,21 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const [session, setSessionState] = useState<Session | null>(null)
 
   const setSession = useCallback((input: SetSessionInput) => {
+    // Achado #5 (review pbi-002): `expires_in` chega direto da resposta da
+    // API (login/refresh) sem validação de runtime. Um valor <= 0 ou NaN
+    // vira `expires_at` no passado (ou inválido), o que faz
+    // `refresh-scheduler` agendar com delay <= 0 — loop apertado de
+    // `POST /auth/refresh`, o único endpoint de auth sem rate limit (de
+    // propósito). Decisão: falhar de forma ruidosa (lança) em vez de aplicar
+    // um fallback silencioso — os dois únicos chamadores (`LoginForm` e
+    // `refresh-scheduler`) já tratam esse tipo de falha encerrando/negando a
+    // sessão, então "fail closed" aqui é seguro e não exige tratamento novo.
+    if (!isValidExpiresIn(input.expires_in)) {
+      throw new Error(
+        "setSession: expires_in inválido — deve ser um número finito maior que zero."
+      )
+    }
+
     setSessionState({
       access_token: input.access_token,
       refresh_token: input.refresh_token,
