@@ -73,14 +73,14 @@ Surfaced while writing this spec — not present no CA original.
 
 | Requirement ID | Source | Phase | Status |
 | --- | --- | --- | --- |
-| ALTA-01 | CA-01 (original) | Tasks | Pending |
-| ALTA-02 | CA-02 (original) | Tasks | Pending |
-| ALTA-03 | CA-02 (original) | Tasks | Pending |
-| ALTA-04 | CA-03 (original) | Tasks | Pending |
-| ALTA-05 | CA-03 (original) | Tasks | Pending |
-| ALTA-06 | Edge case | Tasks | Pending |
-| ALTA-07 | Edge case | Tasks | Pending |
-| ALTA-08 | Edge case | Tasks | Pending |
+| ALTA-01 | CA-01 (original) | T3, T4 | Verified |
+| ALTA-02 | CA-02 (original) | T3, T4 | Verified |
+| ALTA-03 | CA-02 (original) | T2, T3, T4 | Verified |
+| ALTA-04 | CA-03 (original) | T4 | Verified |
+| ALTA-05 | CA-03 (original) | T4 | Verified |
+| ALTA-06 | Edge case | T3 | Verified |
+| ALTA-07 | Edge case | T3 | Verified |
+| ALTA-08 | Edge case | T6 | Verified |
 
 **ID format:** `ALTA-NN`
 
@@ -88,7 +88,7 @@ Surfaced while writing this spec — not present no CA original.
 
 **Coverage:** 8 total, 8 mapped to `task.md`, 0 unmapped.
 
-**Nota de dependência externa**: esta PBI precisa de 2 tabelas novas no Supabase real (`especies`, `animais`) via migration SQL (mesmo padrão de `services/backend/supabase/migrations/20260907120000_create_profiles.sql`). Não há acesso automatizado ao Postgres do projeto nesta sessão (sem `DATABASE_URL`/CLI linkado) — o usuário confirmou que aplica a migration manualmente no SQL Editor do dashboard do Supabase antes da suíte e2e real rodar (ver task T1).
+**Nota de dependência externa (resolvida)**: esta PBI precisou de 2 tabelas novas no Supabase real (`species`, `animals`) via migration SQL (mesmo padrão de `services/backend/supabase/migrations/20260907120000_create_profiles.sql`). Sem acesso automatizado ao Postgres do projeto nesta sessão (sem `DATABASE_URL`/CLI linkado), o usuário aplicou a migration manualmente no SQL Editor do dashboard do Supabase — confirmado pelos e2e reais de T4 passando contra o banco.
 
 ---
 

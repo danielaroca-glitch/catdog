@@ -1,7 +1,7 @@
 # Alta de animal — Tasks
 
 **Spec**: `spec.md` (same folder)
-**Status**: Approved
+**Status**: Done — 6/6 tasks (T1-T6) + GET /species (addendum). Quality gate full: build/lint/testes ✅, coverage ✅ (backend 100%, frontend 94-100% nos arquivos alterados), complexidade ✅ (nenhuma função acima de CC 10), Sonar ✅ (0 issues/duplicações novas, coverage novo 96%).
 
 **Convenção de nomenclatura**: identificadores técnicos (tabelas, colunas, rotas, código) em inglês, mesmo padrão já usado em `profiles`/`role`/`user_id` (módulo de Autenticação) — vocabulário de negócio (espécie/animal) fica em PT-BR nos artefatos e na UI.
 
@@ -44,9 +44,9 @@ T4 → T5 → T6
 - Skill: `makuco-backend` (per `gap-routing.md`)
 
 **Done when**:
-- [ ] Arquivo SQL criado, idempotente (`if not exists` / `on conflict do nothing` no seed)
-- [ ] `species.name` único; `animals.species_id` com FK `references species(id)`; `animals.active` `not null default true`
-- [ ] Usuário aplicou a migration manualmente no SQL Editor do Supabase (dependência externa confirmada com o usuário — ver `spec.md`)
+- [x] Arquivo SQL criado, idempotente (`if not exists` / `on conflict do nothing` no seed)
+- [x] `species.name` único; `animals.species_id` com FK `references species(id)`; `animals.active` `not null default true`
+- [x] Usuário aplicou a migration manualmente no SQL Editor do Supabase (dependência externa confirmada com o usuário — ver `spec.md`)
 
 **Tests**: none — camada de schema, sem tipo de teste definido em `testing.md`; validada indiretamente pelos testes e2e de T4, depois de aplicada.
 **Gate**: none (arquivo SQL, sem código TypeScript a compilar/testar nesta task)
@@ -68,9 +68,9 @@ T4 → T5 → T6
 - Skill: `makuco-backend`
 
 **Done when**:
-- [ ] `SpeciesService.exists(speciesId: string): Promise<boolean>` implementado
-- [ ] Gate check passes: `npm run test` (services/backend)
-- [ ] Test count: suíte cresce em pelo menos 2 testes (existe / não existe), nenhum teste removido
+- [x] `SpeciesService.exists(speciesId: string): Promise<boolean>` implementado
+- [x] Gate check passes: `npm run test` (services/backend)
+- [x] Test count: suíte cresce em pelo menos 2 testes (existe / não existe), nenhum teste removido
 
 **Tests**: unit
 **Gate**: quick
@@ -94,11 +94,11 @@ T4 → T5 → T6
 - Skill: `makuco-backend`
 
 **Done when**:
-- [ ] DTO rejeita `name` vazio/ausente (ALTA-06) e `species_id` mal formado (ALTA-07) via `class-validator`
-- [ ] Use case rejeita `species_id` inexistente com uma exceção clara (ALTA-03), sem persistir nada
-- [ ] Use case persiste o animal com `active: true` em caso de sucesso (ALTA-01, ALTA-02)
-- [ ] Gate check passes: `npm run test` (services/backend)
-- [ ] Test count: suíte cresce em pelo menos 5 testes, nenhum teste removido
+- [x] DTO rejeita `name` vazio/ausente (ALTA-06) e `species_id` mal formado (ALTA-07) via `class-validator`
+- [x] Use case rejeita `species_id` inexistente com uma exceção clara (ALTA-03), sem persistir nada
+- [x] Use case persiste o animal com `active: true` em caso de sucesso (ALTA-01, ALTA-02)
+- [x] Gate check passes: `npm run test` (services/backend)
+- [x] Test count: suíte cresce em pelo menos 5 testes, nenhum teste removido
 
 **Tests**: unit
 **Gate**: quick
@@ -122,9 +122,9 @@ T4 → T5 → T6
 - Skill: `makuco-backend`
 
 **Done when**:
-- [ ] E2E-01, E2E-02, E2E-03 de `spec.md` implementados e passando contra o Supabase real (migration de T1 já aplicada)
-- [ ] Gate check passes: `npm run test:e2e` (services/backend)
-- [ ] Test count: suíte e2e cresce em pelo menos 4 testes (sucesso, sem espécie, espécie inexistente, sem token, papel errado), nenhum teste removido
+- [x] E2E-01, E2E-02, E2E-03 de `spec.md` implementados e passando contra o Supabase real (migration de T1 já aplicada)
+- [x] Gate check passes: `npm run test:e2e` (services/backend)
+- [x] Test count: suíte e2e cresce em pelo menos 4 testes (sucesso, sem espécie, espécie inexistente, sem token, papel errado), nenhum teste removido
 
 **Tests**: e2e (E2E-01, E2E-02, E2E-03)
 **Gate**: full
@@ -148,9 +148,9 @@ T4 → T5 → T6
 - Skill: `makuco-frontend`
 
 **Done when**:
-- [ ] `createAnimal` envia `name`+`species_id`, propaga erro 400/401/403 como `ApiError`
-- [ ] Gate check passes: `npm run test` (services/frontend)
-- [ ] Test count: suíte cresce em pelo menos 3 testes (sucesso, 400, 401/403), nenhum teste removido
+- [x] `createAnimal` envia `name`+`species_id`, propaga erro 400/401/403 como `ApiError`
+- [x] Gate check passes: `npm run test` (services/frontend)
+- [x] Test count: suíte cresce em pelo menos 3 testes (sucesso, 400, 401/403), nenhum teste removido
 
 **Tests**: unit
 **Gate**: quick
@@ -175,10 +175,10 @@ T4 → T5 → T6
 - Skill: `makuco-frontend`
 
 **Done when**:
-- [ ] Submeter sem campo obrigatório exibe erro de validação e não chama `createAnimal` (ALTA-08)
-- [ ] Submissão válida chama `createAnimal` (T5) e exibe confirmação
-- [ ] Gate check passes: `npm run test` (services/frontend)
-- [ ] Test count: suíte cresce em pelo menos 3 testes, nenhum teste removido
+- [x] Submeter sem campo obrigatório exibe erro de validação e não chama `createAnimal` (ALTA-08)
+- [x] Submissão válida chama `createAnimal` (T5) e exibe confirmação
+- [x] Gate check passes: `npm run test` (services/frontend)
+- [x] Test count: suíte cresce em pelo menos 3 testes, nenhum teste removido
 
 **Tests**: unit
 **Gate**: quick
