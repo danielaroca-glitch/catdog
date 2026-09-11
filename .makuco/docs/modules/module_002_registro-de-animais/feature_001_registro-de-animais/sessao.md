@@ -13,7 +13,7 @@ initial_answers:
   principal_afetado: 'Administradores da ONG, responsáveis por manter o catálogo de animais atualizado.'
   criterio_sucesso: '100% dos animais disponíveis para adoção cadastrados na plataforma, com dados completos e espécie associada.'
   restricoes: 'Depende do módulo de Autenticação/Autorização já entregue (rotas admin-only via RolesGuard). Não depende do módulo futuro de Registro de espécies — usa uma tabela mínima de espécies com seed inicial até esse módulo assumir a gestão completa.'
-ideation_technique: 'exploração livre resumida (processo comprimido a pedido do usuário — projeto de prática, sem uso real em produção)'
+ideation_technique: 'exploração livre resumida (processo comprimido a pedido do usuário)'
 validation_approved: true
 brainstorming_notes: 'Abordagem única (CRUD padrão) por escopo já fechado no roadmap de produto, sem alternativas de mercado a comparar. Duas decisões de negócio resolvidas com o usuário: (1) inativação de animal = soft-delete (campo ativo/flag), nunca exclusão física — preserva histórico, alinhado à descrição do roadmap; (2) espécie = tabela própria mínima (id+nome) com seed inicial, não texto livre — evita re-trabalho quando o módulo futuro "Registro de espécies" assumir a gestão completa do domínio. Dimensões afetadas: cadastro de animais (admin), futura vitrine pública (module 002 do roadmap) e futura gestão de solicitações (module 003) — ambos consumidores do que este módulo cria, mas fora de escopo desta feature.'
 pbis_created:
