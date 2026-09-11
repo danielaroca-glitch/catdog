@@ -31,6 +31,14 @@
 - Para esses casos, o teste e2e precisa rodar contra o serviço real (Supabase real, não um mock/stub), como já é o padrão dos specs em `services/backend/test/*.e2e-spec.ts` (ex. `auth-login.e2e-spec.ts`, `auth-refresh.e2e-spec.ts`).
 - Ao investigar uma falha ligada a um SDK de terceiro, ler o código-fonte real do SDK instalado (`node_modules/`) ou a documentação oficial antes de assumir o comportamento pelo nome do parâmetro/método — ver `.makuco/STATE.md` (Lessons Learned) para o caso concreto do `persistSession`/`signOut({ scope: 'local' })`.
 
+## Componentes Radix UI com portal/pointer capture não são testáveis em jsdom
+
+> Adicionado após `pbi-001` do módulo Registro de Animais (Alta de animal, T6): a primeira tentativa de `AnimalForm` usou o componente `Select` gerado pelo shadcn CLI (baseado em Radix UI) para a escolha de espécie.
+
+- Mesmo com os polyfills usuais de jsdom para esse tipo de componente (`hasPointerCapture`, `scrollIntoView`), a interação de abrir/selecionar uma opção trava nos testes (Jest + React Testing Library) — Radix depende de comportamento real de pointer events/portal que o jsdom não simula fielmente.
+- Resolvido trocando por um `<select>` HTML nativo; o arquivo `components/ui/select.tsx` gerado pelo shadcn CLI foi removido do projeto.
+- Ao decidir usar Radix `Select` (ou qualquer componente Radix com portal/pointer capture, ex. `Dialog`, `Popover`, `DropdownMenu`) em uma tela futura, validar cedo contra o ambiente de teste real do projeto (jsdom) antes de investir na implementação completa — não assumir que os polyfills padrão bastam. Preferir um elemento nativo equivalente quando o campo precisar de teste via Jest + RTL neste projeto.
+
 ## Gate Check Commands
 
 > Confirmado em `pbi-001` (T1/T2): os scripts abaixo batem exatamente com o `package.json` real de `services/backend` (NestJS via `@nestjs/cli@11`) e `services/frontend` (Next.js 16) — deixou de ser suposição para esses dois serviços. Mantém-se `[ASSUMPTION]` apenas para um serviço novo ainda não inicializado.

@@ -21,13 +21,13 @@ stages:
 # PBI-level stages (run once per PBI; different PBIs may progress in parallel).
 pbis:
   alta-de-animal:
-    current_stage: "7. Review"
+    current_stage: "9. Deploy & Documentação"
     business: pending
     technical: pending
     spec: pending
     plan: pending
     review: approved
-    documentation: pending
+    documentation: done
     tasks:
       task-01: done
       task-02: done
@@ -36,13 +36,13 @@ pbis:
       task-05: done
       task-06: done
   edicao-de-animal:
-    current_stage: "7. Review"
+    current_stage: "9. Deploy & Documentação"
     business: pending
     technical: pending
     spec: pending
     plan: pending
     review: approved
-    documentation: pending
+    documentation: done
     tasks:
       task-01: done
       task-02: done
@@ -51,13 +51,13 @@ pbis:
       task-05: done
       task-06: done
   inativacao-de-animal:
-    current_stage: "7. Review"
+    current_stage: "9. Deploy & Documentação"
     business: pending
     technical: pending
     spec: pending
     plan: pending
     review: approved
-    documentation: pending
+    documentation: done
     tasks:
       task-01: done
       task-02: done
