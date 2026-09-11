@@ -1,0 +1,17 @@
+@startuml c4-context-catdog
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Diagrama de Contexto (C4 Nível 1) — catdog
+
+Person(admin, "Administrador", "Gerencia o cadastro de animais disponíveis para adoção")
+Person(adotante, "Adotante", "Usuário final interessado em adotar um animal")
+
+System(catdog, "catdog", "Plataforma de adoção de animais — cadastro administrativo de animais, autenticação e autorização por papel")
+
+System_Ext(supabase, "Supabase", "Auth gerenciado (JWT/JWKS) + banco de dados Postgres")
+
+Rel(admin, catdog, "Cadastra, edita e inativa animais; gerencia acesso")
+Rel(adotante, catdog, "Registra-se e faz login")
+Rel(catdog, supabase, "Autentica usuários e persiste dados", "HTTPS/REST")
+
+@enduml

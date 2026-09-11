@@ -1,0 +1,40 @@
+@startuml der-catdog
+
+title Diagrama Entidade-Relacionamento — catdog
+
+entity "auth.users" as AuthUsers {
+  *id : uuid <<PK>>
+  --
+  email : text
+  ' Tabela gerenciada pelo Supabase Auth,
+  ' fora do domínio de dados da aplicação.
+}
+
+entity Profile {
+  *id : uuid <<PK>>
+  --
+  #user_id : uuid <<FK, UK>>
+  role : user_role <<enum: admin | adotante>>
+  created_at : timestamptz
+}
+
+entity Species {
+  *id : uuid <<PK>>
+  --
+  name : text <<unique>>
+  created_at : timestamptz
+}
+
+entity Animal {
+  *id : uuid <<PK>>
+  --
+  name : text
+  #species_id : uuid <<FK>>
+  active : boolean
+  created_at : timestamptz
+}
+
+AuthUsers ||--|| Profile : "tem um"
+Species ||--o{ Animal : "classifica"
+
+@enduml

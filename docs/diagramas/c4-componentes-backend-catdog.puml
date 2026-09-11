@@ -1,0 +1,32 @@
+@startuml c4-componentes-backend-catdog
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Diagrama de Componentes (C4 Nível 3) — Backend catdog
+
+Container(frontend, "Frontend", "Next.js 16, React 19")
+
+Container_Boundary(backend, "Backend (NestJS)") {
+  Component(auth_module, "Auth", "Módulo NestJS", "Registro, login, refresh, guards de autenticação (JwtAuthGuard) e autorização (RolesGuard)")
+  Component(admin_module, "Admin", "Módulo NestJS", "Endpoint de demonstração admin-only, sem lógica de negócio própria")
+  Component(animals_module, "Animals", "Módulo NestJS", "Cadastro, edição, inativação/reativação de animais")
+  Component(species_module, "Species", "Módulo NestJS", "Leitura da lista de espécies (seed fixo)")
+  Component(supabase_provider, "Supabase Provider", "Módulo NestJS", "Cliente singleton (service role) + factory efêmera de cliente de auth")
+}
+
+System_Ext(supabase, "Supabase", "Auth (JWT/JWKS) + Postgres")
+
+Rel(frontend, auth_module, "REST/JSON")
+Rel(frontend, animals_module, "REST/JSON, Bearer JWT")
+Rel(frontend, species_module, "REST/JSON, Bearer JWT")
+
+Rel(animals_module, species_module, "Valida species_id")
+Rel(admin_module, auth_module, "Reusa guards")
+Rel(animals_module, auth_module, "Reusa guards")
+Rel(species_module, auth_module, "Reusa guards")
+
+Rel(auth_module, supabase_provider, "Usa")
+Rel(animals_module, supabase_provider, "Usa")
+Rel(species_module, supabase_provider, "Usa")
+Rel(supabase_provider, supabase, "supabase-js")
+
+@enduml

@@ -1,0 +1,23 @@
+@startuml c4-conteineres-catdog
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Diagrama de Contêineres (C4 Nível 2) — catdog
+
+Person(admin, "Administrador", "Gerencia o cadastro de animais")
+Person(adotante, "Adotante", "Usuário final")
+
+System_Boundary(catdog, "catdog") {
+  Container(frontend, "Frontend", "Next.js 16, React 19", "Interface web — login, registro, área administrativa de animais")
+  Container(backend, "Backend", "NestJS, REST", "API — autenticação, autorização por papel, cadastro de animais e espécies")
+}
+
+System_Ext(supabase_auth, "Supabase Auth", "Identidade, sessão JWT (ES256/JWKS), refresh token")
+SystemDb_Ext(supabase_db, "Supabase Postgres", "Tabelas profiles, species, animals")
+
+Rel(admin, frontend, "Usa", "HTTPS")
+Rel(adotante, frontend, "Usa", "HTTPS")
+Rel(frontend, backend, "Chama", "REST/JSON, Bearer JWT")
+Rel(backend, supabase_auth, "Valida token, autentica usuário", "supabase-js")
+Rel(backend, supabase_db, "Lê e escreve dados", "supabase-js")
+
+@enduml
