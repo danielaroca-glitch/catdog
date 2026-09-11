@@ -1,6 +1,6 @@
 ---
-status: 'developing'
-stepsCompleted: [1, 2, 3]
+status: 'done'
+stepsCompleted: [1, 2, 3, 4, 5]
 item_id: 'pbi-002'
 ado_id: ''
 titulo: 'Edição de animal'
@@ -14,6 +14,6 @@ ca_imutaveis: true
 spec_construido: true
 total_tasks: 6
 skills_necessarias: ['makuco-backend', 'makuco-frontend']
-proxima_fase: 'implementar'
+proxima_fase: 'concluida'
 riscos: []
 ---
