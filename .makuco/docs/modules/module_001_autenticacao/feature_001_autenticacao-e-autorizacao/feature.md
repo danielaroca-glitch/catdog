@@ -10,7 +10,7 @@ status: done
 **ID:** feature_001 (local)
 **Data:** 2026-09-07
 **Responsável:** Mateus (dev)
-**Status:** Em documentação
+**Status:** Aprovada e documentada (3/3 PBIs concluídas)
 
 ---
 

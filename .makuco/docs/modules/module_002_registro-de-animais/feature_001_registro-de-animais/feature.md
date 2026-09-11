@@ -9,8 +9,8 @@ status: done
 
 **ID:** feature_001 (local)
 **Data:** 2026-09-10
-**Responsável:** _not provided_
-**Status:** Em documentação
+**Responsável:** Não definido (ver `MAKUCO.md` — `analise.aprovador: nenhum`)
+**Status:** Aprovada e documentada (3/3 PBIs concluídas)
 
 ---
 
