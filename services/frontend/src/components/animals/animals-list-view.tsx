@@ -26,6 +26,7 @@ export function AnimalsListView() {
   const [animals, setAnimals] = useState<Animal[]>([])
   const [species, setSpecies] = useState<SpeciesOption[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [toggleError, setToggleError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -53,10 +54,18 @@ export function AnimalsListView() {
 
   // INATIVACAO-01/02/06: atualiza o status exibido só para o animal
   // afetado, sem recarregar a página inteira.
+  //
+  // Achado #1 (major, review rodada 1): usa `toggleError`, um estado
+  // separado do erro de carga inicial (`error`) — antes, uma falha de
+  // toggle setava o mesmo `error` da carga inicial, e a condição de render
+  // da tabela (`!error && ...`) escondia a lista INTEIRA já carregada com
+  // sucesso. Agora uma falha pontual de toggle não derruba a lista.
   async function toggleActive(animal: Animal) {
     if (!session) {
       return
     }
+
+    setToggleError(null)
 
     try {
       const updated = await updateAnimal(
@@ -70,7 +79,9 @@ export function AnimalsListView() {
         )
       )
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : GENERIC_TOGGLE_ERROR_MESSAGE)
+      setToggleError(
+        err instanceof ApiError ? err.message : GENERIC_TOGGLE_ERROR_MESSAGE
+      )
     }
   }
 
@@ -91,6 +102,16 @@ export function AnimalsListView() {
             className="text-sm font-normal text-destructive"
           >
             {error}
+          </div>
+        )}
+        {toggleError && (
+          <div
+            role="alert"
+            aria-live="polite"
+            data-testid="animals-list-toggle-error"
+            className="text-sm font-normal text-destructive"
+          >
+            {toggleError}
           </div>
         )}
         {!error && isLoading && (

@@ -153,4 +153,33 @@ describe("AnimalsListView", () => {
     })
     expect(await screen.findByText("Ativo")).toBeInTheDocument()
   })
+
+  // Achado #1 (major, review rodada 1): uma falha no toggle não pode
+  // esconder a tabela inteira já carregada com sucesso.
+  it("shows a toggle-specific error without hiding the already-loaded table", async () => {
+    listAnimalsMock.mockResolvedValue([
+      {
+        id: "animal-1",
+        name: "Rex",
+        species_id: "species-1",
+        active: true,
+        created_at: "2026-09-10T00:00:00.000Z",
+      },
+    ])
+    listSpeciesMock.mockResolvedValue([{ id: "species-1", name: "Cachorro" }])
+    updateAnimalMock.mockRejectedValue(new Error("network error"))
+    const user = userEvent.setup()
+
+    render(<AnimalsListView />)
+    await screen.findByText("Rex")
+
+    await user.click(screen.getByTestId("animal-toggle-active-animal-1"))
+
+    expect(
+      await screen.findByTestId("animals-list-toggle-error")
+    ).toBeInTheDocument()
+    expect(screen.getByTestId("animals-list-table")).toBeInTheDocument()
+    expect(screen.getByText("Rex")).toBeInTheDocument()
+    expect(screen.queryByTestId("animals-list-error")).not.toBeInTheDocument()
+  })
 })
