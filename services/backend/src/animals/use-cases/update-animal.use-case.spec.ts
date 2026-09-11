@@ -109,6 +109,44 @@ describe('UpdateAnimalUseCase', () => {
     expect(result.active).toBe(false);
   });
 
+  it('atualiza active para false (INATIVACAO-01)', async () => {
+    const inactivatedAnimal = {
+      id: ANIMAL_ID,
+      name: 'Rex',
+      species_id: 'species-1',
+      active: false,
+      created_at: '2026-09-10T00:00:00.000Z',
+    };
+    const supabase = buildSupabaseMock();
+    const query = buildAnimalsUpdate({ data: inactivatedAnimal, error: null });
+    supabase.from.mockReturnValue(query);
+
+    const { useCase } = await buildUseCase(supabase);
+    const result = await useCase.execute(ANIMAL_ID, { active: false });
+
+    expect(query.update).toHaveBeenCalledWith({ active: false });
+    expect(result.active).toBe(false);
+  });
+
+  it('atualiza active para true (INATIVACAO-02)', async () => {
+    const reactivatedAnimal = {
+      id: ANIMAL_ID,
+      name: 'Rex',
+      species_id: 'species-1',
+      active: true,
+      created_at: '2026-09-10T00:00:00.000Z',
+    };
+    const supabase = buildSupabaseMock();
+    const query = buildAnimalsUpdate({ data: reactivatedAnimal, error: null });
+    supabase.from.mockReturnValue(query);
+
+    const { useCase } = await buildUseCase(supabase);
+    const result = await useCase.execute(ANIMAL_ID, { active: true });
+
+    expect(query.update).toHaveBeenCalledWith({ active: true });
+    expect(result.active).toBe(true);
+  });
+
   it('lança BadRequestException quando nenhum campo é informado, sem tocar o banco (EDICAO-09)', async () => {
     const supabase = buildSupabaseMock();
     const { useCase } = await buildUseCase(supabase);

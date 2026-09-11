@@ -44,4 +44,18 @@ describe('UpdateAnimalDto', () => {
       errors.find((error) => error.property === 'species_id'),
     ).toBeDefined();
   });
+
+  it('não deve ter erros quando só active é informado (INATIVACAO-01/02)', async () => {
+    const dto = plainToInstance(UpdateAnimalDto, { active: false });
+
+    expect(await validate(dto)).toHaveLength(0);
+  });
+
+  it('deve rejeitar quando active não é um booleano', async () => {
+    const dto = plainToInstance(UpdateAnimalDto, { active: 'nao-e-booleano' });
+
+    const errors = await validate(dto);
+
+    expect(errors.find((error) => error.property === 'active')).toBeDefined();
+  });
 });

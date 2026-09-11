@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -16,4 +17,8 @@ export class UpdateAnimalDto {
   @IsOptional()
   @IsUUID('4', { message: 'species_id deve ser um UUID válido' })
   species_id?: string;
+
+  @IsOptional()
+  @IsBoolean({ message: 'active deve ser um booleano' })
+  active?: boolean;
 }

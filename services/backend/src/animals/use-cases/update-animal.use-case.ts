@@ -39,6 +39,11 @@ const UPDATE_ANIMAL_ERROR_MESSAGE =
  * `data: null, error: null` — vira 404. Qualquer `error` real vira 500. Não
  * há checagem de `active`/soft-delete aqui (EDICAO-04): a edição funciona
  * igual para um animal ativo ou inativo, por design.
+ *
+ * `active` (INATIVACAO-01, INATIVACAO-02, pbi-003) reusa este mesmo update
+ * genérico em vez de um endpoint dedicado — inativar/reativar é só mais um
+ * campo (RN-02), sem validação extra além do booleano do DTO; idempotente
+ * por natureza do próprio `UPDATE` SQL (INATIVACAO-03).
  */
 @Injectable()
 export class UpdateAnimalUseCase {
@@ -48,7 +53,9 @@ export class UpdateAnimalUseCase {
   ) {}
 
   async execute(animalId: string, dto: UpdateAnimalDto): Promise<Animal> {
-    const updatePayload: Partial<Pick<Animal, 'name' | 'species_id'>> = {};
+    const updatePayload: Partial<
+      Pick<Animal, 'name' | 'species_id' | 'active'>
+    > = {};
 
     if (dto.name !== undefined) {
       updatePayload.name = dto.name;
@@ -62,6 +69,10 @@ export class UpdateAnimalUseCase {
       }
 
       updatePayload.species_id = dto.species_id;
+    }
+
+    if (dto.active !== undefined) {
+      updatePayload.active = dto.active;
     }
 
     if (Object.keys(updatePayload).length === 0) {
