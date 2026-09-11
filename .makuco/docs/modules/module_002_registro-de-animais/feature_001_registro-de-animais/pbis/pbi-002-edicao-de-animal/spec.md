@@ -90,16 +90,16 @@ Source: PBI artifact (`../pbi.md`, CA-01 a CA-05). Tratados como imutáveis — 
 
 | Requirement ID | Source | Phase | Status |
 | --- | --- | --- | --- |
-| EDICAO-01 | CA-01 (original) | Tasks | Pending |
-| EDICAO-02 | CA-02 (original) | Tasks | Pending |
-| EDICAO-03 | CA-03 (original) | Tasks | Pending |
-| EDICAO-04 | CA-04 (original) | Tasks | Pending |
-| EDICAO-05 | CA-05 (original) | Tasks | Pending |
-| EDICAO-06 | CA-05 (original) | Tasks | Pending |
-| EDICAO-07 | Edge case | Tasks | Pending |
-| EDICAO-08 | Edge case | Tasks | Pending |
-| EDICAO-09 | Edge case | Tasks | Pending |
-| EDICAO-10 | Gap confirmado com o usuário | Tasks | Pending |
+| EDICAO-01 | CA-01 (original) | T1, T2, T5 | Verified |
+| EDICAO-02 | CA-02 (original) | T1, T2, T5 | Verified |
+| EDICAO-03 | CA-03 (original) | T1, T2 | Verified |
+| EDICAO-04 | CA-04 (original) | T1, T2 | Verified |
+| EDICAO-05 | CA-05 (original) | T2 | Verified |
+| EDICAO-06 | CA-05 (original) | T2 | Verified |
+| EDICAO-07 | Edge case | T1, T2 | Verified |
+| EDICAO-08 | Edge case | T2 | Verified |
+| EDICAO-09 | Edge case | T1 | Verified |
+| EDICAO-10 | Gap confirmado com o usuário | T3, T4, T6 | Verified |
 
 **ID format:** `EDICAO-NN`
 

@@ -1,7 +1,7 @@
 # Edição de animal — Tasks
 
 **Spec**: `spec.md` (same folder)
-**Status**: Approved
+**Status**: Done — 6/6 tasks. Quality gate full: build/lint/testes ✅ (95 backend + 103 frontend), coverage ✅ (100% backend, 94-98% frontend nos arquivos alterados), complexidade ✅, Sonar ✅ (1 achado major encontrado e corrigido — ternário aninhado — 0 issues/duplicações novas, 95.9% coverage novo).
 
 **Reuso**: `SpeciesService` (`services/backend/src/species/species.service.ts`), guards (`JwtAuthGuard`/`RolesGuard`), `AnimalsController`/`AnimalsModule` (extendidos, não recriados) — todos já existentes de `pbi-001-alta-de-animal`. Sem migration nova.
 
@@ -38,12 +38,12 @@ T3 → T4 → T5 → T6
 - Skill: `makuco-backend`
 
 **Done when**:
-- [ ] DTO aceita `name`/`species_id` opcionais, valida UUID quando `species_id` presente
-- [ ] Use case rejeita corpo sem nenhum campo (EDICAO-09), sem tocar o banco
-- [ ] Use case rejeita `species_id` inexistente (EDICAO-03), sem aplicar mudança
-- [ ] Use case distingue "0 linhas afetadas" (animal não existe, EDICAO-07) de erro genérico de banco
-- [ ] Gate check passes: `npm run test` (services/backend)
-- [ ] Test count: suíte cresce em pelo menos 6 testes, nenhum teste removido
+- [x] DTO aceita `name`/`species_id` opcionais, valida UUID quando `species_id` presente
+- [x] Use case rejeita corpo sem nenhum campo (EDICAO-09), sem tocar o banco
+- [x] Use case rejeita `species_id` inexistente (EDICAO-03), sem aplicar mudança
+- [x] Use case distingue "0 linhas afetadas" (animal não existe, EDICAO-07) de erro genérico de banco
+- [x] Gate check passes: `npm run test` (services/backend)
+- [x] Test count: suíte cresce em pelo menos 6 testes, nenhum teste removido
 
 **Tests**: unit
 **Gate**: quick
@@ -65,9 +65,9 @@ T3 → T4 → T5 → T6
 - Skill: `makuco-backend`
 
 **Done when**:
-- [ ] E2E-01, E2E-02, E2E-03, E2E-04, E2E-05 de `spec.md` implementados e passando contra o Supabase real
-- [ ] Gate check passes: `npm run test:e2e` (services/backend)
-- [ ] Test count: suíte e2e cresce em pelo menos 6 testes, nenhum teste removido
+- [x] E2E-01, E2E-02, E2E-03, E2E-04, E2E-05 de `spec.md` implementados e passando contra o Supabase real
+- [x] Gate check passes: `npm run test:e2e` (services/backend)
+- [x] Test count: suíte e2e cresce em pelo menos 6 testes, nenhum teste removido
 
 **Tests**: e2e (E2E-01, E2E-02, E2E-03, E2E-04, E2E-05)
 **Gate**: full
@@ -89,9 +89,9 @@ T3 → T4 → T5 → T6
 - Skill: `makuco-backend`
 
 **Done when**:
-- [ ] E2E-06 de `spec.md` implementado e passando contra o Supabase real
-- [ ] Gate check passes: `npm run test:e2e` (services/backend)
-- [ ] Test count: suíte e2e cresce em pelo menos 1 teste, nenhum teste removido
+- [x] E2E-06 de `spec.md` implementado e passando contra o Supabase real
+- [x] Gate check passes: `npm run test:e2e` (services/backend)
+- [x] Test count: suíte e2e cresce em pelo menos 1 teste, nenhum teste removido
 
 **Tests**: e2e (E2E-06)
 **Gate**: full
@@ -113,10 +113,10 @@ T3 → T4 → T5 → T6
 - Skill: `makuco-frontend`
 
 **Done when**:
-- [ ] `updateAnimal` envia PATCH com só os campos informados, propaga erro como `ApiError`
-- [ ] `listAnimals` retorna o array de animais, propaga erro como `ApiError`
-- [ ] Gate check passes: `npm run test` (services/frontend)
-- [ ] Test count: suíte cresce em pelo menos 4 testes, nenhum teste removido
+- [x] `updateAnimal` envia PATCH com só os campos informados, propaga erro como `ApiError`
+- [x] `listAnimals` retorna o array de animais, propaga erro como `ApiError`
+- [x] Gate check passes: `npm run test` (services/frontend)
+- [x] Test count: suíte cresce em pelo menos 4 testes, nenhum teste removido
 
 **Tests**: unit
 **Gate**: quick
@@ -138,11 +138,11 @@ T3 → T4 → T5 → T6
 - Skill: `makuco-frontend`
 
 **Done when**:
-- [ ] Com `animalToEdit` informado, os campos nascem preenchidos com os valores do animal
-- [ ] Submissão válida em modo edição chama `updateAnimal` (não `createAnimal`) e exibe confirmação
-- [ ] Modo criação (sem `animalToEdit`) continua funcionando exatamente como antes (regressão)
-- [ ] Gate check passes: `npm run test` (services/frontend)
-- [ ] Test count: suíte cresce em pelo menos 2 testes, nenhum teste removido
+- [x] Com `animalToEdit` informado, os campos nascem preenchidos com os valores do animal
+- [x] Submissão válida em modo edição chama `updateAnimal` (não `createAnimal`) e exibe confirmação
+- [x] Modo criação (sem `animalToEdit`) continua funcionando exatamente como antes (regressão)
+- [x] Gate check passes: `npm run test` (services/frontend)
+- [x] Test count: suíte cresce em pelo menos 2 testes, nenhum teste removido
 
 **Tests**: unit
 **Gate**: quick
@@ -164,11 +164,11 @@ T3 → T4 → T5 → T6
 - Skill: `makuco-frontend`
 
 **Done when**:
-- [ ] `/admin/animais` lista os animais cadastrados com link para editar cada um
-- [ ] `/admin/animais/[id]/editar` carrega o animal e renderiza `AnimalForm` pré-preenchido
-- [ ] Gate check passes: `npm run test` (services/frontend)
-- [ ] Test count: suíte cresce em pelo menos 2 testes, nenhum teste removido
-- [ ] `npm run build` (services/frontend) gera as duas rotas sem erro
+- [x] `/admin/animais` lista os animais cadastrados com link para editar cada um
+- [x] `/admin/animais/[id]/editar` carrega o animal e renderiza `AnimalForm` pré-preenchido
+- [x] Gate check passes: `npm run test` (services/frontend)
+- [x] Test count: suíte cresce em pelo menos 2 testes, nenhum teste removido
+- [x] `npm run build` (services/frontend) gera as duas rotas sem erro
 
 **Tests**: unit
 **Gate**: quick (build confirmado no fechamento da PBI)
