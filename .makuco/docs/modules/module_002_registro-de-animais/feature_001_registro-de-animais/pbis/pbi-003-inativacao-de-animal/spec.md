@@ -70,12 +70,12 @@ Source: PBI artifact (`../pbi.md`, CA-01 a CA-04). Tratados como imutáveis.
 
 | Requirement ID | Source | Phase | Status |
 | --- | --- | --- | --- |
-| INATIVACAO-01 | CA-01 (original) | Tasks | Pending |
-| INATIVACAO-02 | CA-02 (original) | Tasks | Pending |
-| INATIVACAO-03 | CA-03 (original) | Tasks | Pending |
-| INATIVACAO-04 | CA-04 (original) | Tasks | Pending |
-| INATIVACAO-05 | CA-04 (original) | Tasks | Pending |
-| INATIVACAO-06 | Edge case | Tasks | Pending |
+| INATIVACAO-01 | CA-01 (original) | T1, T2 | Verified |
+| INATIVACAO-02 | CA-02 (original) | T1, T2 | Verified |
+| INATIVACAO-03 | CA-03 (original) | T1 | Verified |
+| INATIVACAO-04 | CA-04 (original) | T1 | Verified |
+| INATIVACAO-05 | CA-04 (original) | T1 | Verified |
+| INATIVACAO-06 | Edge case | T2 | Verified |
 
 **ID format:** `INATIVACAO-NN`
 

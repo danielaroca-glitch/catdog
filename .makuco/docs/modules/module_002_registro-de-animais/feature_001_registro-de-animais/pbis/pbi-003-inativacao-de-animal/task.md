@@ -1,7 +1,7 @@
 # Inativação de animal — Tasks
 
 **Spec**: `spec.md` (same folder)
-**Status**: Approved
+**Status**: Done — 2/2 tasks. Quality gate full: build/lint/testes ✅ (99 backend + 105 frontend), coverage ✅ (100% backend, 95-100% frontend nos arquivos alterados), complexidade ✅, Sonar ✅ (0 issues/duplicações novas, 95.8% coverage novo).
 
 **Reuso**: Estende `UpdateAnimalDto`/`UpdateAnimalUseCase`/`PATCH /animals/:id` já existentes (`pbi-002`) em vez de criar um endpoint novo — ver "Decisão de mecanismo" em `spec.md`.
 
@@ -38,11 +38,11 @@ T1 → T2
 - Skill: `makuco-backend`
 
 **Done when**:
-- [ ] DTO aceita `active` opcional (`boolean`)
-- [ ] Use case inclui `active` no payload de update quando informado
-- [ ] E2E-01, E2E-02, E2E-03 de `spec.md` implementados e passando contra o Supabase real
-- [ ] Gate check passes: `npm run test` + `npm run test:e2e` (services/backend)
-- [ ] Test count: unit cresce em pelo menos 2 testes, e2e cresce em pelo menos 3 testes, nenhum teste removido
+- [x] DTO aceita `active` opcional (`boolean`)
+- [x] Use case inclui `active` no payload de update quando informado
+- [x] E2E-01, E2E-02, E2E-03 de `spec.md` implementados e passando contra o Supabase real
+- [x] Gate check passes: `npm run test` + `npm run test:e2e` (services/backend)
+- [x] Test count: unit cresce em pelo menos 2 testes, e2e cresce em pelo menos 3 testes, nenhum teste removido
 
 **Tests**: unit + e2e (E2E-01, E2E-02, E2E-03)
 **Gate**: full
@@ -64,11 +64,11 @@ T1 → T2
 - Skill: `makuco-frontend`
 
 **Done when**:
-- [ ] Clicar em "Inativar" num animal ativo chama `updateAnimal` com `{ active: false }` e a linha passa a mostrar "Inativo"
-- [ ] Clicar em "Reativar" num animal inativo chama `updateAnimal` com `{ active: true }` e a linha passa a mostrar "Ativo"
-- [ ] Gate check passes: `npm run test` (services/frontend)
-- [ ] Test count: suíte cresce em pelo menos 2 testes, nenhum teste removido
-- [ ] `npm run build` (services/frontend) sem erro
+- [x] Clicar em "Inativar" num animal ativo chama `updateAnimal` com `{ active: false }` e a linha passa a mostrar "Inativo"
+- [x] Clicar em "Reativar" num animal inativo chama `updateAnimal` com `{ active: true }` e a linha passa a mostrar "Ativo"
+- [x] Gate check passes: `npm run test` (services/frontend)
+- [x] Test count: suíte cresce em pelo menos 2 testes, nenhum teste removido
+- [x] `npm run build` (services/frontend) sem erro
 
 **Tests**: unit
 **Gate**: quick (build confirmado no fechamento da PBI)
