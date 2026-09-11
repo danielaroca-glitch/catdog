@@ -27,6 +27,7 @@ export interface CreateAnimalPayload {
 export interface UpdateAnimalPayload {
   name?: string
   species_id?: string
+  active?: boolean
 }
 
 export interface Animal {

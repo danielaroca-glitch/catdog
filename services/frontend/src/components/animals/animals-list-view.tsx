@@ -4,9 +4,10 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 
 import { ApiError } from "@/lib/api/auth"
-import { listAnimals, type Animal } from "@/lib/api/animals"
+import { listAnimals, updateAnimal, type Animal } from "@/lib/api/animals"
 import { listSpecies, type SpeciesOption } from "@/lib/api/species"
 import { useSession } from "@/lib/auth/session-context"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -17,6 +18,8 @@ import {
 
 const GENERIC_ERROR_MESSAGE =
   "Não foi possível carregar os animais. Tente novamente mais tarde."
+const GENERIC_TOGGLE_ERROR_MESSAGE =
+  "Não foi possível atualizar o status do animal. Tente novamente mais tarde."
 
 export function AnimalsListView() {
   const { session } = useSession()
@@ -46,6 +49,29 @@ export function AnimalsListView() {
 
   function speciesName(speciesId: string): string {
     return species.find((option) => option.id === speciesId)?.name ?? "—"
+  }
+
+  // INATIVACAO-01/02/06: atualiza o status exibido só para o animal
+  // afetado, sem recarregar a página inteira.
+  async function toggleActive(animal: Animal) {
+    if (!session) {
+      return
+    }
+
+    try {
+      const updated = await updateAnimal(
+        animal.id,
+        { active: !animal.active },
+        session.access_token
+      )
+      setAnimals((current) =>
+        current.map((candidate) =>
+          candidate.id === updated.id ? updated : candidate
+        )
+      )
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : GENERIC_TOGGLE_ERROR_MESSAGE)
+    }
   }
 
   return (
@@ -93,7 +119,7 @@ export function AnimalsListView() {
                   <td className="py-1">{animal.name}</td>
                   <td className="py-1">{speciesName(animal.species_id)}</td>
                   <td className="py-1">{animal.active ? "Ativo" : "Inativo"}</td>
-                  <td className="py-1">
+                  <td className="py-1 flex items-center gap-3">
                     <Link
                       href={`/admin/animais/${animal.id}/editar`}
                       className="text-primary underline"
@@ -101,6 +127,15 @@ export function AnimalsListView() {
                     >
                       Editar
                     </Link>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void toggleActive(animal)}
+                      data-testid={`animal-toggle-active-${animal.id}`}
+                    >
+                      {animal.active ? "Inativar" : "Reativar"}
+                    </Button>
                   </td>
                 </tr>
               ))}
