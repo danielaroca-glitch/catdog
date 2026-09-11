@@ -36,6 +36,14 @@ const animalFormSchema = z.object({
 
 export type AnimalFormValues = z.infer<typeof animalFormSchema>
 
+function submitButtonLabel(isEditMode: boolean, isSubmitting: boolean): string {
+  if (isEditMode) {
+    return isSubmitting ? "Salvando..." : "Salvar"
+  }
+
+  return isSubmitting ? "Cadastrando..." : "Cadastrar"
+}
+
 export interface AnimalFormProps {
   /**
    * Callback opcional chamado com os dados validados no submit, no lugar da
@@ -253,13 +261,7 @@ export function AnimalForm({
               data-testid="animal-submit-spinner"
             />
           )}
-          {isEditMode
-            ? isSubmitting
-              ? "Salvando..."
-              : "Salvar"
-            : isSubmitting
-              ? "Cadastrando..."
-              : "Cadastrar"}
+          {submitButtonLabel(isEditMode, isSubmitting)}
         </Button>
       </CardFooter>
     </Card>
